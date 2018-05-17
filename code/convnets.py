@@ -24,6 +24,7 @@ import cPickle as pickle
 from pdb import set_trace
 from MLP import MLPDropout, ReLU,Sigmoid,Iden,HiddenLayer
 
+
 # ----------------------------------------------------------------------
 class LeNetConvPoolLayer(object):
     """Pool Layer of a convolutional network """
@@ -438,10 +439,11 @@ class ConvNet(MLPDropout):
         else:
             new_data = train_set
         
-        shuffled_data = np.random.permutation(new_data) # Attardi
+        #shuffled_data = np.random.permutation(new_data) # Attardi
+        shuffled_data = new_data
         n_batches     = shuffled_data.shape[0]/batch_size
         # divide train set into 90% train, 10% validation sets
-        n_train_batches = int(np.round(n_batches*0.8))
+        n_train_batches = int(np.round(n_batches*0.9))
         n_val_batches = n_batches - n_train_batches
         train_set = shuffled_data[:n_train_batches*batch_size,:]
         val_set   = shuffled_data[n_train_batches*batch_size:,:]     
@@ -516,17 +518,18 @@ class ConvNet(MLPDropout):
         drops    = 0
         prev_val_perf = 0  
         for epoch in xrange(epochs):
-            if epoch == 4:
-                break
+#             if epoch == 4:
+#                 break
             start_time = time.time()
             # FIXME: should permute whole set rather than minibatch indexes
             if shuffle_batch:
-                #count = 0
+                count = 0
                 for minibatch_index in np.random.permutation(range(n_train_batches)):
                     cost_epoch = train_model(minibatch_index)
                     self.set_zero(self.zero_vec) # CHECKME: Why?
-                    #count = count + 1
+                    count = count + 1
                     #print count, time.time() - start_time
+                    #sys.stdout.flush()
                     #if count > 10:
                     #    print "...", n_train_batches, shuffle_batch, n_batches, batch_size
                     #    sys.exit()
@@ -563,6 +566,8 @@ class ConvNet(MLPDropout):
                 break
             prev_val_perf = val_perf
             print info
+            print "Test acc: %.2f %% " % (test_perf * 100.)
+            sys.stdout.flush()
         # set_trace() 
         return test_perf
 

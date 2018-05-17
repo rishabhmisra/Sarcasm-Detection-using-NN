@@ -7,6 +7,8 @@ Convolutional Neural Networks for Sentence Classification
 http://arxiv.org/pdf/1408.5882v2.pdf
 """
 import ast
+import os
+os.environ["MKL_THREADING_LAYER"] = "GNU"
 import csv
 import cPickle as pickle
 import numpy as np
@@ -244,6 +246,11 @@ def test_fold(W, U, user_idx, max_l, params, folds_file):
         hidden_units[0] = conf[1]
         hidden_units[1] = conf[3]
         dropout_rate    = conf[2] 
+        
+        filter_hs       = (1,3,5)
+        hidden_units[0] = 200
+        hidden_units[1] = 100
+        dropout_rate    = 0.1
 
         # hidden_units[0] = n_hiddens
         # filter_hs = [filter_size] * n_filter
@@ -276,40 +283,40 @@ def test_fold(W, U, user_idx, max_l, params, folds_file):
         
         config_results[conf] = round(perf,3)
         print "Accuracy (For Loop): %.4f" % perf
-        sys.exit()
+        break
     
     top_conf = sorted(config_results.items(), key=lambda x:x[1])[-1]
     print "The top conf is:", top_conf
-    conf        = top_conf[0]
-    filter_hs       = conf[0]
-    hidden_units[0] = conf[1]
-    hidden_units[1] = conf[3]
-    dropout_rate    = conf[2] 
-    # hidden_units[0] = n_hiddens
-    # filter_hs = [filter_size] * n_filter
-    pad = max(filter_hs) - 1
-    height = max_l + 2 * pad # padding on both sides
+#     conf        = top_conf[0]
+#     filter_hs       = conf[0]
+#     hidden_units[0] = conf[1]
+#     hidden_units[1] = conf[3]
+#     dropout_rate    = conf[2] 
+#     # hidden_units[0] = n_hiddens
+#     # filter_hs = [filter_size] * n_filter
+#     pad = max(filter_hs) - 1
+#     height = max_l + 2 * pad # padding on both sides
 
-    train_set = make_idx_data_from_ids(sents, word_index, user_idx, max_l, pad, train_ids)      
-    val_set = make_idx_data_from_ids(sents, word_index, user_idx, max_l, pad, val_ids)    
-    test_set  = make_idx_data_from_ids(sents, word_index, user_idx, max_l, pad, test_ids)   
+#     train_set = make_idx_data_from_ids(sents, word_index, user_idx, max_l, pad, train_ids)      
+#     val_set = make_idx_data_from_ids(sents, word_index, user_idx, max_l, pad, val_ids)    
+#     test_set  = make_idx_data_from_ids(sents, word_index, user_idx, max_l, pad, test_ids)   
     
-    all_set = np.concatenate((train_set,val_set),0)
+#     all_set = np.concatenate((train_set,val_set),0)
 
-    cnn = ConvNet(W, U, height, width,
-                  filter_hs=filter_hs,
-                  conv_non_linear=conv_non_linear,
-                  hidden_units=hidden_units,
-                  batch_size=batch_size,
-                  non_static=non_static,
-                  dropout_rates=[dropout_rate],
-                  activations=[ReLU,Iden])
+#     cnn = ConvNet(W, U, height, width,
+#                   filter_hs=filter_hs,
+#                   conv_non_linear=conv_non_linear,
+#                   hidden_units=hidden_units,
+#                   batch_size=batch_size,
+#                   non_static=non_static,
+#                   dropout_rates=[dropout_rate],
+#                   activations=[ReLU,Iden])
 
-    perf = cnn.evaluate(all_set, test_set,
-                     lr_decay=lr_decay,
-                     shuffle_batch=shuffle_batch, 
-                     epochs=epochs,
-                     sqr_norm_lim=sqr_norm_lim)
+#     perf = cnn.evaluate(all_set, test_set,
+#                      lr_decay=lr_decay,
+#                      shuffle_batch=shuffle_batch, 
+#                      epochs=epochs,
+#                      sqr_norm_lim=sqr_norm_lim)
         
     # # save model
     # if i == 0 or perf > max(results):
@@ -317,8 +324,8 @@ def test_fold(W, U, user_idx, max_l, params, folds_file):
     #         cnn.save(mfile)
     #         pickle.dump((word_index, labels, max_l, pad), mfile)
     
-    config_results[conf] = (results, round(perf))
-    print "Accuracy final: %.4f" % perf
+    #config_results[conf] = (results, round(perf))
+    #print "Accuracy final: %.4f" % perf
         
     
 def get_parser():
@@ -408,7 +415,7 @@ if __name__=="__main__":
                   "sqr_norm_lim": sqr_norm_lim,
                   "shuffle batch": shuffle_batch,
                   # "epochs":args.epochs}
-                  "epochs":20}
+                  "epochs":300}
 
     # for param,val in parameters.items():
     #     # print "%s: %s" % (param, ",".join(str(x) for x in val))
