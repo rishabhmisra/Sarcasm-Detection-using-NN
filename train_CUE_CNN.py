@@ -76,7 +76,7 @@ parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
 parser.add_argument('-b', '--batch-size', default=32, type=int,
                     metavar='N', help='mini-batch size (default: 256)')
-parser.add_argument('--lr', '--learning-rate', default=0.0001, type=float,
+parser.add_argument('--lr', '--learning-rate', default=0.000005, type=float,
                     metavar='LR', help='initial learning rate')
 parser.add_argument('--momentum', default=0.95, type=float, metavar='M',
                     help='momentum')
@@ -116,7 +116,7 @@ def main():
     # Data loading code
     #traindir = os.path.join(args.data, 'train')
     #valdir = os.path.join(args.data, 'val')
-    filter_h = [1, 3, 5]
+    filter_h = [4,6,8] #[1, 3, 5]
     
     train_sampler = None 
     train_dataset = TwitterDataset(
@@ -176,9 +176,10 @@ def main():
     # define loss function (criterion) and optimizer
     criterion = nn.CrossEntropyLoss().cuda()
 
-    optimizer = torch.optim.SGD(model.parameters(), lr = args.lr,
-                                     momentum=args.momentum,
-                                     weight_decay=args.weight_decay)
+    optimizer = torch.optim.Adam(model.parameters(), lr = args.lr)
+#     optimizer = torch.optim.SGD(model.parameters(), lr = args.lr,
+#                                      momentum=args.momentum,
+#                                      weight_decay=args.weight_decay)
 #     torch.optim.Adadelta(model.parameters(), 
 #                                      rho=args.momentum,
 #                                      weight_decay=args.weight_decay)
@@ -253,7 +254,7 @@ def main():
         plt.subplot(2,1,1)
         plot_stats(epoch+1, train_loss_plot, val_loss_plot, test_loss_plot, 'train_loss', 'val_loss', 'test_loss', plt)
         plt.subplot(2,1,2)
-        plot_stats(epoch+1, train_prec1_plot, val_prec1_plot, test_prec1_plot, 'train_prec1', 'val_prec1', 'test_prec1', plt)
+        plot_stats(epoch+1, train_prec1_plot, val_prec1_plot, test_prec1_plot, 'train_acc', 'val_acc', 'test_acc', plt)
         plt.savefig('progress/' + run_time + '/stats.jpg')
         plt.clf()
     f.close()
@@ -386,7 +387,7 @@ class AverageMeter(object):
 
 def adjust_learning_rate(optimizer, epoch):
     """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
-    lr = args.lr * (0.1 ** (epoch // 30))
+    lr = args.lr * (0.5 ** (epoch // 50))
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
 
