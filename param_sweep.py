@@ -170,6 +170,8 @@ def main():
                 for hu in [128, 256]:
                     for dp in [0, 0.1, 0.3]:
                         for fs in [(1,2,3), (1,3,5)]:
+                            best_prec1 = 0
+                            best_prec1_index = -1
                             parameters = {"filters": fs,
                                           "out_channels": oc,                  
                                           "max_length": train_dataset.max_l,
@@ -248,6 +250,7 @@ def main():
                                 # remember best prec@1 and save checkpoint
                                 is_best = val_prec1 > best_prec1
                                 best_prec1 = max(val_prec1, best_prec1)
+                                best_prec1_index = epoch if is_best else best_prec1_index
                                 save_checkpoint({
                                     'train_prec1_plot':train_prec1_plot,
                                     'train_loss_plot':train_loss_plot,
@@ -271,13 +274,13 @@ def main():
                                 #plt.clf()
                                 #print "Learning rate is : ", optimizer.param_groups[0]['lr']
                             print " $$ ", lr, wd, oc, hu, dp, fs, " $$ "
-                            print train_prec1, val_prec1, test_prec1
-                            best_prec1_ps = max(val_prec1, best_prec1_ps)
+                            print train_prec1_plot[best_prec1_index], best_prec1, test_prec1_plot[best_prec1_index]
+                            best_prec1_ps = max(best_prec1, best_prec1_ps)
                             f.write('configuration {0} {1} {2} {3} {4} {5} \n'.format(lr, wd, oc, hu, dp, fs))
-                            f.write('train: {0} val: {1} test: {2} \n'.format(train_prec1, val_prec1, test_prec1))
+                            f.write('train: {0} val: {1} test: {2} \n'.format(train_prec1_plot[best_prec1_index], best_prec1, test_prec1_plot[best_prec1_index]))
                             f.write('best val performance is : ' + str(best_prec1_ps) + '\n')
                             f.flush()
-                            best_prec1_ps = max(val_prec1, best_prec1_ps)
+                            #best_prec1_ps = max(best_prec1, best_prec1_ps)
     print "final best performance is for val ", best_prec1_ps                       
     f.close()
 
