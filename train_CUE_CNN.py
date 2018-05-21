@@ -76,11 +76,11 @@ parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
 parser.add_argument('-b', '--batch-size', default=32, type=int,
                     metavar='N', help='mini-batch size (default: 256)')
-parser.add_argument('--lr', '--learning-rate', default=0.000005, type=float,
+parser.add_argument('--lr', '--learning-rate', default=0.005, type=float,
                     metavar='LR', help='initial learning rate')
 parser.add_argument('--momentum', default=0.95, type=float, metavar='M',
                     help='momentum')
-parser.add_argument('--weight-decay', '--wd', default=1e-4, type=float,
+parser.add_argument('--weight-decay', '--wd', default=1e-3, type=float,
                     metavar='W', help='weight decay (default: 1e-4)')
 parser.add_argument('--print-freq', '-p', default=128, type=int,
                     metavar='N', help='print frequency (default: 10)')
@@ -122,7 +122,7 @@ def main():
     train_dataset = TwitterDataset(
         csv_file='DATA/txt/bamman_clean.txt', 
         folds_file='DATA/folds/fold_0.csv', 
-        word_embedding_file='DATA/embeddings/embeddings.txt', 
+        word_embedding_file='DATA/embeddings/filtered_embs.txt', 
         user_embedding_file='DATA/embeddings/usr2vec.txt', 
         set_type='train', 
         pad = max(filter_h) - 1
@@ -135,7 +135,7 @@ def main():
     val_dataset = TwitterDataset(
         csv_file='DATA/txt/bamman_clean.txt', 
         folds_file='DATA/folds/fold_0.csv', 
-        word_embedding_file='DATA/embeddings/embeddings.txt', 
+        word_embedding_file='DATA/embeddings/filtered_embs.txt', 
         user_embedding_file='DATA/embeddings/usr2vec.txt', 
         set_type='val', 
         pad = max(filter_h) - 1,
@@ -149,7 +149,7 @@ def main():
     test_dataset = TwitterDataset(
         csv_file='DATA/txt/bamman_clean.txt', 
         folds_file='DATA/folds/fold_0.csv', 
-        word_embedding_file='DATA/embeddings/embeddings.txt', 
+        word_embedding_file='DATA/embeddings/filtered_embs.txt', 
         user_embedding_file='DATA/embeddings/usr2vec.txt', 
         set_type='test', 
         pad = max(filter_h) - 1,
@@ -164,7 +164,7 @@ def main():
                   "out_channels": 200,                  
                   "max_length": train_dataset.max_l,
                   "hidden_units": 100,
-                  "drop_prob": 0.1,
+                  "drop_prob": 0.15,
                   "user_size": 400,
                   "epochs":args.epochs}
     
@@ -176,13 +176,13 @@ def main():
     # define loss function (criterion) and optimizer
     criterion = nn.CrossEntropyLoss().cuda()
 
-    optimizer = torch.optim.Adam(model.parameters(), lr = args.lr)
+#     optimizer = torch.optim.Adam(model.parameters(), lr = args.lr)
 #     optimizer = torch.optim.SGD(model.parameters(), lr = args.lr,
 #                                      momentum=args.momentum,
 #                                      weight_decay=args.weight_decay)
-#     torch.optim.Adadelta(model.parameters(), 
-#                                      rho=args.momentum,
-#                                      weight_decay=args.weight_decay)
+    optimizer = torch.optim.Adadelta(model.parameters(), 
+                                     rho=args.momentum,
+                                     weight_decay=args.weight_decay)
     
     # optionally resume from a checkpoint
     train_prec1_plot = []
@@ -387,7 +387,7 @@ class AverageMeter(object):
 
 def adjust_learning_rate(optimizer, epoch):
     """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
-    lr = args.lr * (0.5 ** (epoch // 50))
+    lr = args.lr * (0.8** (epoch // 20))
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
 
