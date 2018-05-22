@@ -22,7 +22,7 @@ for Sarcasm Detection in Social Media' (https://arxiv.org/pdf/1607.00976.pdf). T
 
 4. Clone or download the [my_utils](https://github.com/samiroid/utils) module and place it under the folder ```code```. 
 
-5.Execute iPython notebook ```get_data.ipynb```. This utility code is used to download tweets from the ids and then preprocess these tweet messages.
+5. Execute iPython notebook ```get_data.ipynb```. This utility code is used to download tweets from the ids and then preprocess these tweet messages.
 
 ### 2. Training and Evaluation
 Run ```python train_CUE_CNN.py```
@@ -35,4 +35,4 @@ The code generate a ```progress``` folder, that contains sub folder for every ru
    - train/test/validation accuracy on a single plot
    
 ## Note:
-Util files, pre-trained user embeddings and raw tweet ids were obtained from [Original CUE-CNN (https://github.com/samiroid/CUE-CNN)
+Util files, pre-trained user embeddings and raw tweet ids were obtained from [Original CUE-CNN] (https://github.com/samiroid/CUE-CNN)
