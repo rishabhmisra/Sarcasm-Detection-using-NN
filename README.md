@@ -1,7 +1,7 @@
 # Sarcasm-Detection-using-CNN
 
 This is the PyTorch implementation of work presented in 'Modelling Context with User Embeddings
-for Sarcasm Detection in Social Media' (https://arxiv.org/pdf/1607.00976.pdf). The neural network takes in the input a tweet( content)and a unqiue user embedding(context), and classifies the tweets as sarcastic/non-sarcastic.
+for Sarcasm Detection in Social Media' (https://arxiv.org/pdf/1607.00976.pdf). The neural network takes a tweet (content) and corresponding user embedding (context) as input, and classifies the tweets as sarcastic/non-sarcastic.
 
 ## System requirments
 - python 2.7
