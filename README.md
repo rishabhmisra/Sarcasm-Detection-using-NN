@@ -10,24 +10,25 @@ for Sarcasm Detection in Social Media' (https://arxiv.org/pdf/1607.00976.pdf). T
 
 # Running the code
 ### Pre-requisites
-Get pre-trained word embeddings (e.g. Skip-gram)
- 1. Install the bin file from - 
- 2. Run the iPython notebook - 
- 3.
+1. Get pre-trained word embeddings (e.g. Skip-gram)
+   - Install the bin file from this [link](https://drive.google.com/file/d/0B7XkCwpI5KDYNlNUTTlSS21pQmM/edit)
+   - Run the iPython notebook 
+   - Place the .txt file obtained in DATA/embeddings/ and change the name to ```words.txt```
+
+2.  Get pre-trained user embeddings for the user. The embeddings we used can be found [here](https://www.dropbox.com/s/pmp5x08v6w09jrq/usr2vec_400_master.txt?dl=0). Place the embeddings in ```DATA/embeddings``` and name the file as ```usr2vec.txt```
+
+3.  Get the user tweets - To comply with Twitter policies we can only share the msg ids. These can be found in the file bamman_redux_ids.txt
+
+4. Clone or download the [my_utils] (https://github.com/samiroid/utils) module and place it under the folder ```code```
+execute iPython notebook ```notebook.ipynb```. This utility code is used to download tweets from the ids and then preprocess these tweet messages.
 
 
 ### Training and Evaluation
-python train_CUE_CNN.py
+Run ```python train_CUE_CNN.py```
 
-
-# Output 
+# Output, results and visualization 
 The code generate a progress folder, that contains sub folder for every run. Inside the run folder - 
 1. logs.txt that contains loss and accuracy on train/test/validation set after every epoch
-2. stats.jpg that plots -
-  i. train/test/validation loss on a single plot
-  ii. train/test/validation accuracy on a single plot
-
-
-
-
-
+2. stats.jpg that plots
+   - train/test/validation loss on a single plot
+   - train/test/validation accuracy on a single plot
