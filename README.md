@@ -18,11 +18,7 @@ for Sarcasm Detection in Social Media' (https://arxiv.org/pdf/1607.00976.pdf). T
 
 2.  Get pre-trained user embeddings for the user. The embeddings we used can be found [here](https://www.dropbox.com/s/pmp5x08v6w09jrq/usr2vec_400_master.txt?dl=0). Place the embeddings in ```DATA/embeddings``` and name the file as ```usr2vec.txt```
 
-3.  Get the user tweets - To comply with Twitter policies we can only share the msg ids. These can be found in the file bamman_redux_ids.txt 
-
-4. Clone or download the [my_utils](https://github.com/samiroid/utils) module and place it under the folder ```code```. 
-
-5. Execute iPython notebook ```get_data.ipynb```. This utility code is used to download tweets from the ids and then preprocess these tweet messages.
+3. Execute iPython notebook ```get_data.ipynb```. This utility code is used to download tweets corresponding to the tweet ids and then preprocess these tweet messages.
 
 ### 2. Training and Evaluation
 Run ```python train_CUE_CNN.py```
