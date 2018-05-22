@@ -6,6 +6,7 @@ for Sarcasm Detection in Social Media' (https://arxiv.org/pdf/1607.00976.pdf). T
 ## System requirments
 - python 2.7
 - PyTorch 0.3.1
+- python package gensim
 
 
 ## Running the code
@@ -32,3 +33,6 @@ The code generate a ```progress``` folder, that contains sub folder for every ru
 2. ```stats.jpg``` that plots
    - train/test/validation loss on a single plot
    - train/test/validation accuracy on a single plot
+   
+## Note:
+Util files, pre-trained user embeddings and raw tweet ids were obtained from [Original CUE-CNN (https://github.com/samiroid/CUE-CNN)
