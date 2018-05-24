@@ -7,6 +7,8 @@ for Sarcasm Detection in Social Media' (https://arxiv.org/pdf/1607.00976.pdf). T
 - python 2.7
 - PyTorch 0.3.1
 - python package gensim
+- python package yandex.translate
+- python package ipdb
 
 
 ## Running the code
