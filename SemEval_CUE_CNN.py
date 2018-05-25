@@ -20,7 +20,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
-import pdb
+from pdb import set_trace as brk
 import time
 
 from pdb import set_trace as brk
@@ -106,7 +106,6 @@ def main():
     if not os.path.exists(directory):
         os.makedirs(directory)
     f = open(directory + '/logs.txt', 'w')
-    f1 = open(directory + '/vis.txt', 'w')
     global args, best_prec1
     print ("GPU processing available : ", torch.cuda.is_available())
     print ("Number of GPU units available :", torch.cuda.device_count())
@@ -166,10 +165,8 @@ def main():
     
     semeval_dataset = SemEvalDataset(
         csv_file='DATA/txt/SemEval_clean.txt', 
-        word_embedding_file='DATA/embeddings/SemEval_filtered_embs.txt', 
-        set_type='SemEval', 
+        word_embedding_file='DATA/embeddings/SemEval_filtered_embs.txt',  
         pad = max(filter_h) - 1,
-        w2v = train_dataset.w2v,
         max_l = train_dataset.max_l
     )
 
@@ -245,20 +242,21 @@ def main():
         train_loss_plot.append(train_loss)
         
         # evaluate on validation set
-        val_prec1, val_loss = validate(val_loader, model, criterion, f, tag='val')
+        f1 = open(directory + '/vis.txt', 'w')
+        val_prec1, val_loss = validate(val_loader, model, criterion, f, f1, tag='val')
         val_prec1_plot.append(val_prec1)
         val_loss_plot.append(val_loss)
         
         # evaluate on test set
-        test_prec1,test_loss = validate(test_loader, model, criterion, f, tag='test')
+        test_prec1,test_loss = validate(test_loader, model, criterion, f, f1, tag='test')
         test_prec1_plot.append(test_prec1)
         test_loss_plot.append(test_loss)
         
         # evaluate on test set
-        semeval_prec1,semeval_loss = validate(semeval_loader, model, criterion, f, tag='semeval')
+        semeval_prec1,semeval_loss = validate(semeval_loader, model, criterion, f, f1, tag='semeval')
         semeval_prec1_plot.append(semeval_prec1)
         semeval_loss_plot.append(semeval_loss)
-        
+        f1.close()
         # remember best prec@1 and save checkpoint
         is_best = val_prec1 > best_prec1
         best_prec1 = max(val_prec1, best_prec1)
@@ -284,7 +282,7 @@ def main():
         plt.savefig('progress/' + run_time + '/stats.jpg')
         plt.clf()
     f.close()
-    f1.close()
+    #f1.close()
 
 def train(train_loader, model, criterion, optimizer, epoch, f):
     batch_time = AverageMeter()
@@ -304,7 +302,7 @@ def train(train_loader, model, criterion, optimizer, epoch, f):
         target = target.cuda(async=True)
         #input = input.cuda(async=True)
         input = torch.autograd.Variable(input).type(torch.FloatTensor)
-        user_embeddings = torch.zeros(400)
+        user_embeddings = torch.zeros(input.size(0), 400)
         user_embeddings = torch.autograd.Variable(user_embeddings).type(torch.FloatTensor)
         target = torch.autograd.Variable(target)
 
@@ -343,7 +341,7 @@ def train(train_loader, model, criterion, optimizer, epoch, f):
     return top1.avg, losses.avg
 
 
-def validate(val_loader, model, criterion, f, tag, f1):
+def validate(val_loader, model, criterion, f, f1, tag):
     batch_time = AverageMeter()
     losses = AverageMeter()
     top1 = AverageMeter()
@@ -352,11 +350,15 @@ def validate(val_loader, model, criterion, f, tag, f1):
     model.eval()
 
     end = time.time()
-    for i, (input, user_embeddings, target, sents) in enumerate(val_loader):
+    for i, data_points in enumerate(val_loader):
+        if tag != 'semeval':
+            input, user_embeddings, target = data_points
+        else:
+            input, user_embeddings, target, sents = data_points
         target = target.cuda(async=True)
         #input = input.cuda(async=True)
         input = torch.autograd.Variable(input, volatile=True).type(torch.FloatTensor)
-        user_embeddings = torch.zeros(400)
+        user_embeddings = torch.zeros(input.size(0), 400)
         user_embeddings = torch.autograd.Variable(user_embeddings, volatile=True).type(torch.FloatTensor)
         target = torch.autograd.Variable(target, volatile=True)
         #pdb.set_trace()
@@ -386,7 +388,7 @@ def validate(val_loader, model, criterion, f, tag, f1):
             _, pred = output.topk(1, 1, True, True)
             pred = pred.t()
             for x in range(target.size(0)):
-                progress_stats = '{label} | {pred} | {sent} \n'.format(label=target[x],pred=pred[x],
+                progress_stats = '{label} | {pred} | {sent} \n'.format(label=target[x].data[0],pred=pred[0][x].data[0],
                    sent=sents[x])
                 #print(progress_stats)
                 f1.write(progress_stats)

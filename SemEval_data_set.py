@@ -11,7 +11,7 @@ import pandas as pd
 class SemEvalDataset(Dataset):
     """SemEval dataset."""
 
-    def __init__(self, csv_file, folds_file, word_embedding_file, user_embedding_file, set_type, pad, w2v=None, transform=None):
+    def __init__(self, csv_file, word_embedding_file, pad, max_l, transform=None):
         """
         Args:
             csv_file (string): Path to the csv file with tweets.
@@ -19,8 +19,8 @@ class SemEvalDataset(Dataset):
                 on a sample.
         """
         csv.field_size_limit(sys.maxsize)
-        self.csv = pd.read_csv(csv_file)
-        
+        self.csv = pd.read_csv(csv_file, sep='\t', error_bad_lines=False)
+        vocab = ['']
         w2v = self.load_word2vec(word_embedding_file, vocab, word_embedding_file.endswith('.bin'))
         # get embeddings size:
         k = len(w2v.itervalues().next())
@@ -51,10 +51,10 @@ class SemEvalDataset(Dataset):
                             break
                         if ch != '\n':
                             word.append(ch)   
-                    if word in vocab:
-                        word_vecs[word] = np.fromstring(f.read(binary_len), dtype='float32')  
-                    else:
-                        f.read(binary_len)
+                    #if word in vocab:
+                    word_vecs[word] = np.fromstring(f.read(binary_len), dtype='float32')  
+                    #else:
+                    #    f.read(binary_len)
             else:                   # text
                 for line in f:
                     items = line.split()
@@ -75,13 +75,12 @@ class SemEvalDataset(Dataset):
 
 
     def __len__(self):
-        print "LENGTHHH...", len(self.csv)
         return len(self.csv)
 
     def __getitem__(self, idx):
-        label = self.csv.iloc[idx, 1]
-        sent = self.csv.iloc[idx, 2]
-       
+        label = self.csv.iloc[idx, 2]
+        sent = self.csv.iloc[idx, 3]
+        #print label, sent
         k = self.w2v.itervalues().next()
         x = [[0] * k for i in range(self.pad)] 
         words = sent.split()[:self.max_l] # truncate words from test set
@@ -89,7 +88,7 @@ class SemEvalDataset(Dataset):
             if word in self.w2v: # FIXME: skips unknown words
                 x.append(self.w2v[word])
             else:
-                x.append(np.random.uniform(-0.25, 0.25, k))
+                x.append(np.random.uniform(-0.25, 0.25, len(k)))
         while len(x) < self.max_l + 2 * self.pad : # right padding
             x.append([0] * k)
 
