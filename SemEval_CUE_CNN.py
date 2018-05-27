@@ -384,7 +384,7 @@ def validate(val_loader, model, criterion, f, f1, tag):
                i, len(val_loader), batch_time=batch_time, loss=losses,
                top1=top1))
         
-        if tag == 'semeval':
+        if tag == 'semeval' and args.evaluate:
             _, pred = output.topk(1, 1, True, True)
             pred = pred.t()
             for x in range(target.size(0)):
