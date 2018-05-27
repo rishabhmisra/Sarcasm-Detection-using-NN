@@ -81,7 +81,7 @@ parser.add_argument('--lr', '--learning-rate', default=0.005, type=float,
                     metavar='LR', help='initial learning rate')
 parser.add_argument('--momentum', default=0.95, type=float, metavar='M',
                     help='momentum')
-parser.add_argument('--weight-decay', '--wd', default=1e-3, type=float,
+parser.add_argument('--weight-decay', '--wd', default=1e-2, type=float,
                     metavar='W', help='weight decay (default: 1e-4)')
 parser.add_argument('--print-freq', '-p', default=128, type=int,
                     metavar='N', help='print frequency (default: 10)')
@@ -106,6 +106,7 @@ def main():
     if not os.path.exists(directory):
         os.makedirs(directory)
     f = open(directory + '/logs.txt', 'w')
+    f1 = open(directory + '/vis.txt', 'w')
     global args, best_prec1
     print ("GPU processing available : ", torch.cuda.is_available())
     print ("Number of GPU units available :", torch.cuda.device_count())
@@ -178,7 +179,7 @@ def main():
                   "out_channels": 200,                  
                   "max_length": train_dataset.max_l,
                   "hidden_units": 100,
-                  "drop_prob": 0.15,
+                  "drop_prob": 0.2,
                   "user_size": 400,
                   "epochs":args.epochs}
     
@@ -229,7 +230,7 @@ def main():
             print("=> no checkpoint found at '{}'".format(args.resume))
 
     if args.evaluate:
-        validate(test_loader, model, criterion, f)
+        validate(semeval_loader, model, criterion, f, f1, tag='semeval')
         return
 
     for epoch in range(args.start_epoch, args.epochs + args.start_epoch):
@@ -242,7 +243,6 @@ def main():
         train_loss_plot.append(train_loss)
         
         # evaluate on validation set
-        f1 = open(directory + '/vis.txt', 'w')
         val_prec1, val_loss = validate(val_loader, model, criterion, f, f1, tag='val')
         val_prec1_plot.append(val_prec1)
         val_loss_plot.append(val_loss)
@@ -267,6 +267,8 @@ def main():
             'val_loss_plot':val_loss_plot,
             'test_prec1_plot':test_prec1_plot,
             'test_loss_plot':test_loss_plot,
+            'semeval_prec1_plot':test_prec1_plot,
+            'semeval_loss_plot':test_loss_plot,
             'epoch': epoch + 1,
             'state_dict': model.state_dict(),
             'best_prec1': best_prec1,
