@@ -52,17 +52,11 @@ class CUE_CNN(nn.Module):
         self.conv1 = ConvNet(filters[0], out_channels=out_channels, max_length=max_length - filters[0]  + 1)
         self.conv2 = ConvNet(filters[1], out_channels=out_channels, max_length=max_length - filters[1]  + 1)
         self.conv3 = ConvNet(filters[2], out_channels=out_channels, max_length=max_length - filters[2]  + 1)
-        #self.fc = nn.Sequential(
-        #    nn.Linear(out_channels * 3 + user_size, hidden_units),
-        #    nn.ReLU(), #dropout
-        #    nn.Dropout(drop_prob),
-        #    nn.Linear(hidden_units, num_classes))
     def forward(self, x):
         out1 = self.conv1(x)
         out2 = self.conv2(x)
         out3 = self.conv3(x)
         out = torch.cat((out1, out2, out3), dim=1)
-        #out = self.fc(out)
         return out
 
 class MixtureOfExperts(nn.Module):
@@ -85,8 +79,8 @@ class MixtureOfExperts(nn.Module):
         out2, _ = self.bi_lstm(x)
         out3 = self.attention_mlp(out2)
         out4 = torch.mul(out3.view(x.size(0), out2.size(1)), out2)
-        #take sum across an axis
-        out = torch.cat((out1, out4), dim=1)
+        out5 = torch.sum(out4, dim=1)
+        out = torch.cat((out1, out5), dim=1)
         out = self.mlp(out)
         return out
     
@@ -154,7 +148,8 @@ def main():
         word_embedding_file='DATA/embeddings/headlines_filtered_embs.txt', 
         #user_embedding_file='DATA/embeddings/usr2vec.txt', 
         #set_type='train', 
-        pad = max(filter_h) - 1
+        pad = max(filter_h) - 1,
+        whole_data='DATA/txt/headlines_clean.txt',
     )
 
     train_loader = torch.utils.data.DataLoader(
@@ -168,6 +163,8 @@ def main():
         #user_embedding_file='DATA/embeddings/usr2vec.txt', 
         #set_type='val', 
         pad = max(filter_h) - 1,
+        word_idx = train_dataset.word_idx,
+        pretrained_embs = train_dataset.pretrained_embs,        
         #w2v = train_dataset.w2v
     )
 
@@ -182,6 +179,8 @@ def main():
         #user_embedding_file='DATA/embeddings/usr2vec.txt', 
         #set_type='test', 
         pad = max(filter_h) - 1,
+        word_idx = train_dataset.word_idx,
+        pretrained_embs = train_dataset.pretrained_embs,
         #w2v = train_dataset.w2v
     )
 
@@ -194,7 +193,9 @@ def main():
         csv_file='DATA/txt/SemEval_clean.txt', 
         word_embedding_file='DATA/embeddings/SemEval_filtered_embs.txt',  
         pad = max(filter_h) - 1,
-        max_l = train_dataset.max_l
+        max_l = train_dataset.max_l,
+        word_idx = train_dataset.word_idx,
+        pretrained_embs = train_dataset.pretrained_embs,
     )
 
     semeval_loader = torch.utils.data.DataLoader(

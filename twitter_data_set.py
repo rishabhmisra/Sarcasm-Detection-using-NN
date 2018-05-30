@@ -159,4 +159,4 @@ class TwitterDataset(Dataset):
 #         if self.transform:
 #             data_point = self.transform(data_point)
 
-        return  torch.from_numpy(np.array(x)).unsqueeze(0), user_embedding, label
+        return  torch.from_numpy(np.array(x)).unsqueeze(0), user_embedding, label, self.sents[msg_id]['text']

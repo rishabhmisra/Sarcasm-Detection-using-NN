@@ -11,7 +11,7 @@ import pandas as pd
 class HeadlineDataset(Dataset):
     """SemEval dataset."""
 
-    def __init__(self, csv_file, word_embedding_file, pad, transform=None):
+    def __init__(self, csv_file, word_embedding_file, pad, whole_data=None, word_idx=None, pretrained_embs=None, transform=None):
         """
         Args:
             csv_file (string): Path to the csv file with tweets.
@@ -20,23 +20,30 @@ class HeadlineDataset(Dataset):
         """
         csv.field_size_limit(sys.maxsize)
         self.csv = pd.read_csv(csv_file, sep='\t', error_bad_lines=False)
-        vocab = ['']
-        w2v = self.load_word2vec(word_embedding_file, vocab, word_embedding_file.endswith('.bin'))
-        # get embeddings size:
-        k = len(w2v.itervalues().next())
-        print "word2vec loaded (%d, %d)" % (len(w2v), k)
-        #self.add_unknown_words(w2v, vocab, k)
-        self.w2v = w2v
+
         self.max_l = 50
         self.pad = pad
         self.transform = transform
 
+        if whole_data is not None:
+            vocab = self.get_vocab()
+            self.word_idx, self.pretrained_embs = self.load_word2vec(word_embedding_file, vocab, word_embedding_file.endswith('.bin'))
+        # get embeddings size:
+            self.k = len(self.pretrained_embs[0])
+            print "word2vec loaded (%d, %d)" % (len(self.word_idx), self.k)
+            self.add_unknown_words(vocab)
+            self.pretrained_embs = np.array(self.pretrained_embs)
+        else:
+            self.word_idx = word_idx
+            self.pretrained_embs = pretrained_embs
 
     def load_word2vec(self,fname, vocab, binary=True):
         """
         Loads 300x1 word vecs from Google (Mikolov) word2vec
         """
-        word_vecs = {}
+        word_idx = {}
+        pretrained_embs = []
+        pretrained_embs.append(np.zeros(300,), dtype='float32')
         with open(fname, "rb") as f:
             header = f.readline()
             vocab_size, layer1_size = map(int, header.split())
@@ -51,27 +58,47 @@ class HeadlineDataset(Dataset):
                             break
                         if ch != '\n':
                             word.append(ch)   
+                    word_idx[word] = line + 1
+                    pretrained_embs.append(np.fromstring(f.read(binary_len), dtype='float32'))
                     #if word in vocab:
-                    word_vecs[word] = np.fromstring(f.read(binary_len), dtype='float32')  
+                    #word_vecs[word] = np.fromstring(f.read(binary_len), dtype='float32')  
                     #else:
                     #    f.read(binary_len)
-            else:                   # text
+            else: # text
+                counter = 1
                 for line in f:
                     items = line.split()
                     word = unicode(items[0], 'utf-8')
-                    word_vecs[word] = np.array(map(float, items[1:]))
-        return word_vecs
+                    #word_vecs[word] = np.array(map(float, items[1:]))
+                    word_idx[word] = counter
+                    counter = counter + 1 
+                    pretrained_embs.append(np.array(map(float, items[1:])))
+        return word_idx, pretrained_embs
+    
+    def get_vocab(self, clean_string=False):
+        vocab = defaultdict(int)
+        for (idx, row) in self.csv.iterrows():
+            if clean_string:
+                clean_text = clean_str(row[3])
+            else:
+                clean_text = text.lower()
+            words = clean_text.split()
+            for word in set(words):
+                vocab[word] += 1           
+        return vocab
 
-
-    def add_unknown_words(self,word_vecs, vocab, k, min_df=1):
+    def add_unknown_words(self, vocab, min_df=1):
         """
         For words that occur in at least min_df documents, create a separate word vector.    
         0.25 is chosen so the unknown vectors have (approximately) same variance as pre-trained ones
         :param k: size of embedding vectors.
         """
+        counter = len(self.pretrained_embs)
         for word in vocab:
-            if word not in word_vecs and vocab[word] >= min_df:
-                word_vecs[word] = np.random.uniform(-0.25, 0.25, k)
+            if word not in self.word_idx and vocab[word] >= min_df:
+                self.word_idx[word] = counter
+                counter += 1
+                self.pretrained_embs.append(np.random.uniform(-0.25, 0.25, self.k))
 
 
     def __len__(self):
@@ -81,18 +108,12 @@ class HeadlineDataset(Dataset):
         label = self.csv.iloc[idx, 2]
         sent = self.csv.iloc[idx, 3]
         #print label, sent
-        k = self.w2v.itervalues().next()
-        x = [[0] * k for i in range(self.pad)] 
-        try:
-            words = sent.split()[:self.max_l] # truncate words from test set
-        except AttributeError:
-            print idx, sent
+        x = [0 for i in range(self.pad)] 
+        words = sent.split()[:self.max_l] # truncate words from test set
         for word in words:
-            if word in self.w2v: # FIXME: skips unknown words
-                x.append(self.w2v[word])
-            else:
-                x.append(np.random.uniform(-0.25, 0.25, len(k)))
+            if word in self.word_idx: # FIXME: skips unknown words
+                x.append(self.word_idx[word])
         while len(x) < self.max_l + 2 * self.pad : # right padding
-            x.append([0] * k)
+            x.append(0)
 
-        return  torch.from_numpy(np.array(x)).unsqueeze(0), torch.zeros(400), label
+        return  np.array(x), label, sent
