@@ -21,12 +21,12 @@ class HeadlineDataset(Dataset):
         csv.field_size_limit(sys.maxsize)
         self.csv = pd.read_csv(csv_file, sep='\t', error_bad_lines=False)
 
-        self.max_l = 50
+        self.max_l = 0
         self.pad = pad
         self.transform = transform
 
         if whole_data is not None:
-            vocab = self.get_vocab()
+            vocab = self.get_vocab(whole_data)
             self.word_idx, self.pretrained_embs = self.load_word2vec(word_embedding_file, vocab, word_embedding_file.endswith('.bin'))
         # get embeddings size:
             self.k = len(self.pretrained_embs[0])
@@ -43,7 +43,7 @@ class HeadlineDataset(Dataset):
         """
         word_idx = {}
         pretrained_embs = []
-        pretrained_embs.append(np.zeros(300,), dtype='float32')
+        pretrained_embs.append(np.zeros((300,), dtype='float32'))
         with open(fname, "rb") as f:
             header = f.readline()
             vocab_size, layer1_size = map(int, header.split())
@@ -75,14 +75,17 @@ class HeadlineDataset(Dataset):
                     pretrained_embs.append(np.array(map(float, items[1:])))
         return word_idx, pretrained_embs
     
-    def get_vocab(self, clean_string=False):
+    def get_vocab(self, whole_data, clean_string=False):
         vocab = defaultdict(int)
-        for (idx, row) in self.csv.iterrows():
+        whole_csv = pd.read_csv(whole_data, sep='\t', error_bad_lines=False)
+        for (idx, row) in whole_csv.iterrows():
             if clean_string:
                 clean_text = clean_str(row[3])
             else:
-                clean_text = text.lower()
+                clean_text = row[3].lower()
             words = clean_text.split()
+            if self.max_l < len(words):
+                self.max_l = len(words)
             for word in set(words):
                 vocab[word] += 1           
         return vocab

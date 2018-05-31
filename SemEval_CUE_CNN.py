@@ -177,7 +177,7 @@ def main():
 
     parameters = {"filters": filter_h,
                   "out_channels": 200,                  
-                  "max_length": train_dataset.max_l,
+                  "max_length": train_dataset.max_l + 2  * (max(filter_h) - 1),
                   "hidden_units": 100,
                   "drop_prob": 0.2,
                   "user_size": 400,
@@ -378,13 +378,13 @@ def validate(val_loader, model, criterion, f, f1, tag):
         batch_time.update(time.time() - end)
         end = time.time()
         
-        #if i % args.print_freq == 0:
-        print('Test: [{0}/{1}]\t'
-              'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-              'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-              'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t'.format(
-               i, len(val_loader), batch_time=batch_time, loss=losses,
-               top1=top1))
+#         if i % args.print_freq == 0:
+#             print('Test: [{0}/{1}]\t'
+#                   'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
+#                   'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
+#                   'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t'.format(
+#                    i, len(val_loader), batch_time=batch_time, loss=losses,
+#                    top1=top1))
         
         if tag == 'semeval' and args.evaluate:
             _, pred = output.topk(1, 1, True, True)

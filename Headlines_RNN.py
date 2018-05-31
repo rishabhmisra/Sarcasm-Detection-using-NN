@@ -40,14 +40,11 @@ class ConvNet(nn.Module):
         
     def forward(self, x):
         out = self.layer1(x)
-        #out = self.layer2(out)
-        #brk()
         out = out.view(out.size(0), -1)
-        #out = self.fc(out)
         return out
     
 class CUE_CNN(nn.Module):
-    def __init__(self, filters, out_channels, max_length, hidden_units, drop_prob, user_size, num_classes=2):
+    def __init__(self, filters, out_channels, max_length, hidden_units, drop_prob, num_classes=2):
         super(CUE_CNN, self).__init__()
         self.conv1 = ConvNet(filters[0], out_channels=out_channels, max_length=max_length - filters[0]  + 1)
         self.conv2 = ConvNet(filters[1], out_channels=out_channels, max_length=max_length - filters[1]  + 1)
@@ -60,25 +57,31 @@ class CUE_CNN(nn.Module):
         return out
 
 class MixtureOfExperts(nn.Module):
-    def __init__(self, filters, out_channels, max_length, hidden_units, drop_prob, user_size, input_size, hidden_size_lstm, hidden_units_attention, num_classes=2):
-        super(CUE_CNN, self).__init__()
-        self.cue_cnn = CUE_CNN(filters, out_channels, max_length, hidden_units, drop_prob, user_size, num_classes)
-        self.bi_lstm = nn.LSTM(input_size, hidden_size_lstm, num_layers=1, bidirectional=True)
+    def __init__(self, filters, out_channels, max_length, hidden_units, drop_prob, lstm_input_size, hidden_size_lstm, hidden_units_attention, pretrained_weight, num_classes=2):
+        super(MixtureOfExperts, self).__init__()
+        self.embed = nn.Embedding(pretrained_weight.shape[0], pretrained_weight.shape[1])
+        self.embed.weight.data.copy_(torch.from_numpy(pretrained_weight))
+        
+        self.cue_cnn = CUE_CNN(filters, out_channels, max_length, hidden_units, drop_prob, num_classes)
+        self.bi_lstm = nn.LSTM(lstm_input_size, hidden_size_lstm, num_layers=1, bidirectional=True)
+        
         self.attention_mlp = nn.Sequential(
-            nn.Linear(hidden_size_lstm, hidden_units_attention),
-            nn.ReLU(), #dropout
-            #nn.Dropout(drop_prob),
+            nn.Linear(hidden_size_lstm * 2, hidden_units_attention),
+            nn.ReLU(),
             nn.Linear(hidden_units_attention, 1))
+        
         self.mlp = nn.Sequential(
-            nn.Linear(out_channels * 3 + hidden_size_lstm, hidden_units),
-            nn.ReLU(), #dropout
-            nn.Dropout(drop_prob),
+            nn.Linear(out_channels * 3 + hidden_size_lstm * 2, hidden_units),
+            nn.ReLU(), 
+            nn.Dropout(drop_prob), #dropout
             nn.Linear(hidden_units, num_classes))
+    
     def forward(self, x):
-        out1 = self.cue_cnn(x)
-        out2, _ = self.bi_lstm(x)
+        x = self.embed(x)
+        out1 = self.cue_cnn(x.unsqueeze(1))
+        out2 = self.bi_lstm(x.transpose(0,1))[0].transpose(0,1)
         out3 = self.attention_mlp(out2)
-        out4 = torch.mul(out3.view(x.size(0), out2.size(1)), out2)
+        out4 = torch.mul(out3.view(x.size(0), x.size(1)).unsqueeze(2).repeat(1,1,out2.size(2)), out2)
         out5 = torch.sum(out4, dim=1)
         out = torch.cat((out1, out5), dim=1)
         out = self.mlp(out)
@@ -103,7 +106,7 @@ parser.add_argument('--momentum', default=0.95, type=float, metavar='M',
                     help='momentum')
 parser.add_argument('--weight-decay', '--wd', default=1e-2, type=float,
                     metavar='W', help='weight decay (default: 1e-4)')
-parser.add_argument('--print-freq', '-p', default=128, type=int,
+parser.add_argument('--print-freq', '-p', default=1, type=int,
                     metavar='N', help='print frequency (default: 10)')
 parser.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
@@ -133,12 +136,6 @@ def main():
     args = parser.parse_args()
 
     ## READ DATA
-    #cudnn.benchmark = True
-
-    #TODO
-    # Data loading code
-    #traindir = os.path.join(args.data, 'train')
-    #valdir = os.path.join(args.data, 'val')
     filter_h = [4,6,8] #[1, 3, 5]
     
     train_sampler = None 
@@ -189,34 +186,34 @@ def main():
         num_workers=args.workers, pin_memory=True)
 
     
-    semeval_dataset = SemEvalDataset(
-        csv_file='DATA/txt/SemEval_clean.txt', 
-        word_embedding_file='DATA/embeddings/SemEval_filtered_embs.txt',  
-        pad = max(filter_h) - 1,
-        max_l = train_dataset.max_l,
-        word_idx = train_dataset.word_idx,
-        pretrained_embs = train_dataset.pretrained_embs,
-    )
+#     semeval_dataset = SemEvalDataset(
+#         csv_file='DATA/txt/SemEval_clean.txt', 
+#         word_embedding_file='DATA/embeddings/SemEval_filtered_embs.txt',  
+#         pad = max(filter_h) - 1,
+#         max_l = train_dataset.max_l,
+#         #word_idx = train_dataset.word_idx,
+#         #pretrained_embs = train_dataset.pretrained_embs,
+#     )
 
-    semeval_loader = torch.utils.data.DataLoader(
-        semeval_dataset, batch_size=args.batch_size, shuffle=None,
-        num_workers=args.workers, pin_memory=True)
+#     semeval_loader = torch.utils.data.DataLoader(
+#         semeval_dataset, batch_size=args.batch_size, shuffle=None,
+#         num_workers=args.workers, pin_memory=True)
 
     parameters = {"filters": filter_h,
                   "out_channels": 200,                  
-                  "max_length": train_dataset.max_l,
+                  "max_length": train_dataset.max_l + 2  * (max(filter_h) - 1),
                   "hidden_units": 100,
                   "drop_prob": 0.2,
                   "user_size": 400,
                   "epochs":args.epochs}
     
     #device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    model = CUE_CNN(parameters['filters'], parameters['out_channels'], parameters['max_length'], parameters['hidden_units'], 
-                    parameters['drop_prob'], parameters['user_size'])#.to(device)
-    model = torch.nn.DataParallel(model).cuda()
+    model = MixtureOfExperts(parameters['filters'], parameters['out_channels'], parameters['max_length'], parameters['hidden_units'], 
+                    parameters['drop_prob'], 300, 128, 128, train_dataset.pretrained_embs)
+    #model = torch.nn.DataParallel(model).cuda()
 
     # define loss function (criterion) and optimizer
-    criterion = nn.CrossEntropyLoss().cuda()
+    criterion = nn.CrossEntropyLoss()#.cuda()
 
 #     optimizer = torch.optim.Adam(model.parameters(), lr = args.lr)
 #     optimizer = torch.optim.SGD(model.parameters(), lr = args.lr,
@@ -233,8 +230,8 @@ def main():
     val_loss_plot = []
     test_prec1_plot = []
     test_loss_plot = []
-    semeval_prec1_plot = []
-    semeval_loss_plot = []
+#     semeval_prec1_plot = []
+#     semeval_loss_plot = []
     if args.resume:
         if os.path.isfile(args.resume):
             print("=> loading checkpoint '{}'".format(args.resume))
@@ -249,8 +246,8 @@ def main():
             val_loss_plot = val_loss_plot + checkpoint['val_loss_plot']
             test_prec1_plot = test_prec1_plot + checkpoint['test_prec1_plot']
             test_loss_plot = test_loss_plot + checkpoint['test_loss_plot']
-            semeval_prec1_plot = semeval_prec1_plot + checkpoint['semeval_prec1_plot']
-            semeval_loss_plot = semeval_loss_plot + checkpoint['semeval_loss_plot']
+#             semeval_prec1_plot = semeval_prec1_plot + checkpoint['semeval_prec1_plot']
+#             semeval_loss_plot = semeval_loss_plot + checkpoint['semeval_loss_plot']
             print("=> loaded checkpoint '{}' (epoch {})"
                   .format(args.resume, checkpoint['epoch']))
         else:
@@ -261,9 +258,7 @@ def main():
         return
 
     for epoch in range(args.start_epoch, args.epochs + args.start_epoch):
-        #TODO
         adjust_learning_rate(optimizer, epoch)
-
         # train for one epoch
         train_prec1, train_loss  = train(train_loader, model, criterion, optimizer, epoch, f)
         train_prec1_plot.append(train_prec1)
@@ -279,10 +274,10 @@ def main():
         test_prec1_plot.append(test_prec1)
         test_loss_plot.append(test_loss)
         
-        # evaluate on test set
-        semeval_prec1,semeval_loss = validate(semeval_loader, model, criterion, f, f1, tag='semeval')
-        semeval_prec1_plot.append(semeval_prec1)
-        semeval_loss_plot.append(semeval_loss)
+        # evaluate on semeval set
+#         semeval_prec1,semeval_loss = validate(semeval_loader, model, criterion, f, f1, tag='semeval')
+#         semeval_prec1_plot.append(semeval_prec1)
+#         semeval_loss_plot.append(semeval_loss)
         f1.close()
         # remember best prec@1 and save checkpoint
         is_best = val_prec1 > best_prec1
@@ -294,8 +289,8 @@ def main():
             'val_loss_plot':val_loss_plot,
             'test_prec1_plot':test_prec1_plot,
             'test_loss_plot':test_loss_plot,
-            'semeval_prec1_plot':test_prec1_plot,
-            'semeval_loss_plot':test_loss_plot,
+#             'semeval_prec1_plot':test_prec1_plot,
+#             'semeval_loss_plot':test_loss_plot,
             'epoch': epoch + 1,
             'state_dict': model.state_dict(),
             'best_prec1': best_prec1,
@@ -305,9 +300,9 @@ def main():
         #plot data
         plt.figure(figsize=(12,12))
         plt.subplot(2,1,1)
-        plot_stats(epoch+1, train_loss_plot, val_loss_plot, test_loss_plot, semeval_loss_plot,  'train_loss', 'val_loss', 'test_loss', 'semeval_loss', plt)
+        plot_stats(epoch+1, train_loss_plot, val_loss_plot, test_loss_plot, 'train_loss', 'val_loss', 'test_loss', plt)
         plt.subplot(2,1,2)
-        plot_stats(epoch+1, train_prec1_plot, val_prec1_plot, test_prec1_plot, semeval_prec1_plot, 'train_acc', 'val_acc', 'test_acc', 'semeval_acc', plt)
+        plot_stats(epoch+1, train_prec1_plot, val_prec1_plot, test_prec1_plot, 'train_acc', 'val_acc', 'test_acc', plt)
         plt.savefig('progress/' + run_time + '/stats.jpg')
         plt.clf()
     f.close()
@@ -323,21 +318,19 @@ def train(train_loader, model, criterion, optimizer, epoch, f):
     model.train()
 
     end = time.time()
-    #classes = dataset.classes
-    for i, (input, user_embeddings, target) in enumerate(train_loader):
+    for i, (input, target, sent) in enumerate(train_loader):
         # measure data loading time
         data_time.update(time.time() - end)
 
-        target = target.cuda(async=True)
+        target = target#.cuda(async=True)
         #input = input.cuda(async=True)
-        input = torch.autograd.Variable(input).type(torch.FloatTensor)
-        user_embeddings = torch.zeros(input.size(0), 400)
-        user_embeddings = torch.autograd.Variable(user_embeddings).type(torch.FloatTensor)
+        input = torch.autograd.Variable(input).type(torch.LongTensor)
+        #user_embeddings = torch.zeros(input.size(0), 400)
+        #user_embeddings = torch.autograd.Variable(user_embeddings).type(torch.FloatTensor)
         target = torch.autograd.Variable(target)
 
         # compute output
-        
-        output = model(input, user_embeddings)
+        output = model(input)
         loss = criterion(output, target)
 
         # measure accuracy and record loss
@@ -347,11 +340,8 @@ def train(train_loader, model, criterion, optimizer, epoch, f):
 
         # compute gradient and do SGD step
         optimizer.zero_grad()
-        #a = list(model.parameters())[0] 
         loss.backward()
         optimizer.step()
-        #b = list(model.parameters())[0] 
-        #print ("Prahal", torch.equal(a.data, b.data), len(list(model.parameters())))
 
         # measure elapsed time
         batch_time.update(time.time() - end)
@@ -381,19 +371,19 @@ def validate(val_loader, model, criterion, f, f1, tag):
     end = time.time()
     for i, data_points in enumerate(val_loader):
         if tag != 'semeval':
-            input, user_embeddings, target = data_points
+            input, target, sent = data_points
         else:
             input, user_embeddings, target, sents = data_points
-        target = target.cuda(async=True)
+        target = target#.cuda(async=True)
         #input = input.cuda(async=True)
-        input = torch.autograd.Variable(input, volatile=True).type(torch.FloatTensor)
-        user_embeddings = torch.zeros(input.size(0), 400)
-        user_embeddings = torch.autograd.Variable(user_embeddings, volatile=True).type(torch.FloatTensor)
+        input = torch.autograd.Variable(input, volatile=True).type(torch.LongTensor)
+#         user_embeddings = torch.zeros(input.size(0), 400)
+#         user_embeddings = torch.autograd.Variable(user_embeddings, volatile=True).type(torch.FloatTensor)
         target = torch.autograd.Variable(target, volatile=True)
         #pdb.set_trace()
 
         # compute output
-        output = model(input, user_embeddings)
+        output = model(input)
         loss = criterion(output, target)
 
         # measure accuracy and record loss

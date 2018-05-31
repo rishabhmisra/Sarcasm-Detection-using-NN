@@ -178,7 +178,7 @@ def main():
 
     parameters = {"filters": filter_h,
                   "out_channels": 200,                  
-                  "max_length": train_dataset.max_l,
+                  "max_length": train_dataset.max_l + 2  * (max(filter_h) - 1),
                   "hidden_units": 100,
                   "drop_prob": 0.2,
                   "user_size": 400,

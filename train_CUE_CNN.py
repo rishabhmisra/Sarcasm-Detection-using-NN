@@ -162,7 +162,7 @@ def main():
 
     parameters = {"filters": filter_h,
                   "out_channels": 200,                  
-                  "max_length": train_dataset.max_l,
+                  "max_length": train_dataset.max_l + 2  * (max(filter_h) - 1),
                   "hidden_units": 100,
                   "drop_prob": 0.15,
                   "user_size": 400,
@@ -270,13 +270,14 @@ def train(train_loader, model, criterion, optimizer, epoch, f):
 
     end = time.time()
     #classes = dataset.classes
-    for i, (input, user_embeddings, target) in enumerate(train_loader):
+    for i, (input, user_embeddings, target, sents) in enumerate(train_loader):
         # measure data loading time
         data_time.update(time.time() - end)
 
         target = target.cuda(async=True)
         #input = input.cuda(async=True)
         input = torch.autograd.Variable(input).type(torch.FloatTensor)
+        #input = input.cuda(async=True)
         user_embeddings = torch.autograd.Variable(user_embeddings).type(torch.FloatTensor)
         target = torch.autograd.Variable(target)
 
@@ -324,7 +325,7 @@ def validate(val_loader, model, criterion, f, is_val=True):
     model.eval()
 
     end = time.time()
-    for i, (input, user_embeddings, target) in enumerate(val_loader):
+    for i, (input, user_embeddings, target, sents) in enumerate(val_loader):
         target = target.cuda(async=True)
         #input = input.cuda(async=True)
         input = torch.autograd.Variable(input, volatile=True).type(torch.FloatTensor)
