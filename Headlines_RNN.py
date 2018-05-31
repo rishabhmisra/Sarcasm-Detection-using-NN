@@ -25,7 +25,7 @@ import time
 
 from pdb import set_trace as brk
 
-from SemEval_data_set import SemEvalDataset
+# from SemEval_data_set import SemEvalDataset
 from headline_data_set import HeadlineDataset
 
 # Convolutional neural network (two convolutional layers) #TODO filter_d
@@ -59,6 +59,7 @@ class CUE_CNN(nn.Module):
 class MixtureOfExperts(nn.Module):
     def __init__(self, filters, out_channels, max_length, hidden_units, drop_prob, lstm_input_size, hidden_size_lstm, hidden_units_attention, pretrained_weight, num_classes=2):
         super(MixtureOfExperts, self).__init__()
+        #brk()
         self.embed = nn.Embedding(pretrained_weight.shape[0], pretrained_weight.shape[1])
         self.embed.weight.data.copy_(torch.from_numpy(pretrained_weight))
         
@@ -106,7 +107,7 @@ parser.add_argument('--momentum', default=0.95, type=float, metavar='M',
                     help='momentum')
 parser.add_argument('--weight-decay', '--wd', default=1e-2, type=float,
                     metavar='W', help='weight decay (default: 1e-4)')
-parser.add_argument('--print-freq', '-p', default=1, type=int,
+parser.add_argument('--print-freq', '-p', default=128, type=int,
                     metavar='N', help='print frequency (default: 10)')
 parser.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
@@ -210,10 +211,10 @@ def main():
     #device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     model = MixtureOfExperts(parameters['filters'], parameters['out_channels'], parameters['max_length'], parameters['hidden_units'], 
                     parameters['drop_prob'], 300, 128, 128, train_dataset.pretrained_embs)
-    #model = torch.nn.DataParallel(model).cuda()
+    model = torch.nn.DataParallel(model).cuda()
 
     # define loss function (criterion) and optimizer
-    criterion = nn.CrossEntropyLoss()#.cuda()
+    criterion = nn.CrossEntropyLoss().cuda()
 
 #     optimizer = torch.optim.Adam(model.parameters(), lr = args.lr)
 #     optimizer = torch.optim.SGD(model.parameters(), lr = args.lr,
@@ -322,8 +323,8 @@ def train(train_loader, model, criterion, optimizer, epoch, f):
         # measure data loading time
         data_time.update(time.time() - end)
 
-        target = target#.cuda(async=True)
-        #input = input.cuda(async=True)
+        target = target.cuda(async=True)
+        input = input.cuda(async=True)
         input = torch.autograd.Variable(input).type(torch.LongTensor)
         #user_embeddings = torch.zeros(input.size(0), 400)
         #user_embeddings = torch.autograd.Variable(user_embeddings).type(torch.FloatTensor)
@@ -374,8 +375,8 @@ def validate(val_loader, model, criterion, f, f1, tag):
             input, target, sent = data_points
         else:
             input, user_embeddings, target, sents = data_points
-        target = target#.cuda(async=True)
-        #input = input.cuda(async=True)
+        target = target.cuda(async=True)
+        input = input.cuda(async=True)
         input = torch.autograd.Variable(input, volatile=True).type(torch.LongTensor)
 #         user_embeddings = torch.zeros(input.size(0), 400)
 #         user_embeddings = torch.autograd.Variable(user_embeddings, volatile=True).type(torch.FloatTensor)
@@ -457,7 +458,6 @@ def accuracy(output, target, topk=(1,)):
     target = target.data
     maxk = max(topk)
     batch_size = target.size(0)
-    #print ("Prahallllll, output", output.size())
     _, pred = output.topk(maxk, 1, True, True)
     pred = pred.t()
     correct = pred.eq(target.view(1, -1).expand_as(pred))

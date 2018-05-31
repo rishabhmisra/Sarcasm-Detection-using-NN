@@ -30,7 +30,7 @@ class HeadlineDataset(Dataset):
             self.word_idx, self.pretrained_embs = self.load_word2vec(word_embedding_file, vocab, word_embedding_file.endswith('.bin'))
         # get embeddings size:
             self.k = len(self.pretrained_embs[0])
-            print "word2vec loaded (%d, %d)" % (len(self.word_idx), self.k)
+            print ("word2vec loaded (%d, %d)" % (len(self.word_idx), self.k))
             self.add_unknown_words(vocab)
             self.pretrained_embs = np.array(self.pretrained_embs)
         else:
@@ -59,6 +59,7 @@ class HeadlineDataset(Dataset):
                         if ch != '\n':
                             word.append(ch)   
                     word_idx[word] = line + 1
+                    brk()
                     pretrained_embs.append(np.fromstring(f.read(binary_len), dtype='float32'))
                     #if word in vocab:
                     #word_vecs[word] = np.fromstring(f.read(binary_len), dtype='float32')  
@@ -68,11 +69,12 @@ class HeadlineDataset(Dataset):
                 counter = 1
                 for line in f:
                     items = line.split()
-                    word = unicode(items[0], 'utf-8')
+                    word = str(items[0], 'utf-8') #unicode(items[0], 'utf-8')
                     #word_vecs[word] = np.array(map(float, items[1:]))
                     word_idx[word] = counter
                     counter = counter + 1 
-                    pretrained_embs.append(np.array(map(float, items[1:])))
+                    #brk()
+                    pretrained_embs.append(np.array(items[1:], dtype='float')) #.append(np.array(map(float, items[1:])))
         return word_idx, pretrained_embs
     
     def get_vocab(self, whole_data, clean_string=False):
@@ -110,7 +112,7 @@ class HeadlineDataset(Dataset):
     def __getitem__(self, idx):
         label = self.csv.iloc[idx, 2]
         sent = self.csv.iloc[idx, 3]
-        #print label, sent
+        
         x = [0 for i in range(self.pad)] 
         words = sent.split()[:self.max_l] # truncate words from test set
         for word in words:
