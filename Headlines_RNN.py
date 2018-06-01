@@ -66,10 +66,11 @@ class MixtureOfExperts(nn.Module):
         self.cue_cnn = CUE_CNN(filters, out_channels, max_length, hidden_units, drop_prob, num_classes)
         self.bi_lstm = nn.LSTM(lstm_input_size, hidden_size_lstm, num_layers=1, bidirectional=True)
         
-        self.attention_mlp = nn.Sequential(
-            nn.Linear(hidden_size_lstm * 2, hidden_units_attention),
-            nn.ReLU(),
-            nn.Linear(hidden_units_attention, 1))
+#         self.attention_mlp = nn.Sequential(
+#             nn.Linear(hidden_size_lstm * 2, hidden_units_attention),
+#             nn.ReLU(),
+#             nn.Linear(hidden_units_attention, 1))
+        self.attention_mlp = nn.Linear(hidden_size_lstm * 2, 1)
         
         self.mlp = nn.Sequential(
             nn.Linear(out_channels * 3 + hidden_size_lstm * 2, hidden_units),
@@ -82,7 +83,8 @@ class MixtureOfExperts(nn.Module):
         out1 = self.cue_cnn(x.unsqueeze(1))
         out2 = self.bi_lstm(x.transpose(0,1))[0].transpose(0,1)
         out3 = self.attention_mlp(out2)
-        out4 = torch.mul(out3.view(x.size(0), x.size(1)).unsqueeze(2).repeat(1,1,out2.size(2)), out2)
+        #brk()
+        out4 = torch.mul(nn.Softmax()(out3.view(x.size(0), x.size(1))).unsqueeze(2).repeat(1,1,out2.size(2)), out2)
         out5 = torch.sum(out4, dim=1)
         out = torch.cat((out1, out5), dim=1)
         out = self.mlp(out)
@@ -99,7 +101,7 @@ parser.add_argument('--epochs', default=100, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
-parser.add_argument('-b', '--batch-size', default=32, type=int,
+parser.add_argument('-b', '--batch-size', default=64, type=int,
                     metavar='N', help='mini-batch size (default: 256)')
 parser.add_argument('--lr', '--learning-rate', default=0.005, type=float,
                     metavar='LR', help='initial learning rate')
@@ -116,11 +118,11 @@ parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
 
 best_prec1 = 0
 
-def plot_stats(epoch, data_1, data_2, data_3, data_4, label_1, label_2, label_3, label_4, plt):
+def plot_stats(epoch, data_1, data_2, data_3, label_1, label_2, label_3, plt):
     plt.plot(range(epoch), data_1, 'r--', label=label_1)
     plt.plot(range(epoch), data_2, 'g--', label=label_2)
     plt.plot(range(epoch), data_3, 'b--', label=label_3)
-    plt.plot(range(epoch), data_4, 'y--', label=label_4)
+    #plt.plot(range(epoch), data_4, 'y--', label=label_4)
     plt.legend()
 
 
@@ -129,8 +131,8 @@ def main():
     directory = 'progress/' + run_time
     if not os.path.exists(directory):
         os.makedirs(directory)
-    f = open(directory + '/logs.txt', 'w')
-    f1 = open(directory + '/vis.txt', 'w')
+    f = open(directory + '/logs.txt', 'w',encoding='utf-8')
+    f1 = open(directory + '/vis.txt', 'w',encoding='utf-8')
     global args, best_prec1
     print ("GPU processing available : ", torch.cuda.is_available())
     print ("Number of GPU units available :", torch.cuda.device_count())
@@ -162,7 +164,8 @@ def main():
         #set_type='val', 
         pad = max(filter_h) - 1,
         word_idx = train_dataset.word_idx,
-        pretrained_embs = train_dataset.pretrained_embs,        
+        pretrained_embs = train_dataset.pretrained_embs,
+        max_l=train_dataset.max_l,
         #w2v = train_dataset.w2v
     )
 
@@ -180,6 +183,7 @@ def main():
         word_idx = train_dataset.word_idx,
         pretrained_embs = train_dataset.pretrained_embs,
         #w2v = train_dataset.w2v
+        max_l=train_dataset.max_l,
     )
 
     test_loader = torch.utils.data.DataLoader(
@@ -382,7 +386,7 @@ def validate(val_loader, model, criterion, f, f1, tag):
 #         user_embeddings = torch.autograd.Variable(user_embeddings, volatile=True).type(torch.FloatTensor)
         target = torch.autograd.Variable(target, volatile=True)
         #pdb.set_trace()
-
+        #print(sent)
         # compute output
         output = model(input)
         loss = criterion(output, target)
@@ -413,7 +417,7 @@ def validate(val_loader, model, criterion, f, f1, tag):
                 #print(progress_stats)
                 f1.write(progress_stats)
             f1.flush()
-
+    #brk()
     val_stats = '{tag}: Time {time} * Prec@1 {top1.avg:.3f} Loss {loss.avg:.4f}'.format(
         tag=tag,time=time.ctime()[:-8],top1=top1, loss=losses)
     print(val_stats)

@@ -11,7 +11,7 @@ import pandas as pd
 class HeadlineDataset(Dataset):
     """SemEval dataset."""
 
-    def __init__(self, csv_file, word_embedding_file, pad, whole_data=None, word_idx=None, pretrained_embs=None, transform=None):
+    def __init__(self, csv_file, word_embedding_file, pad, whole_data=None, word_idx=None, pretrained_embs=None, max_l=None, transform=None):
         """
         Args:
             csv_file (string): Path to the csv file with tweets.
@@ -36,6 +36,7 @@ class HeadlineDataset(Dataset):
         else:
             self.word_idx = word_idx
             self.pretrained_embs = pretrained_embs
+            self.max_l = max_l
 
     def load_word2vec(self,fname, vocab, binary=True):
         """
