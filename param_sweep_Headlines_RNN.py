@@ -74,9 +74,12 @@ class MixtureOfExperts(nn.Module):
         
         self.mlp = nn.Sequential(
             nn.Linear(out_channels * 3 + hidden_size_lstm * 2, hidden_units),
-            nn.ReLU(), 
+            nn.Tanh(), 
             nn.Dropout(drop_prob), #dropout
-            nn.Linear(hidden_units, num_classes))
+            nn.Linear(hidden_units, 50),
+            nn.Tanh(), 
+            nn.Dropout(drop_prob), #dropout
+            nn.Linear(50, num_classes))
     
     def forward(self, x):
         x = self.embed(x)
@@ -97,13 +100,13 @@ parser = argparse.ArgumentParser(description='PyTorch CUE CNN Training')
 #                     help='path to dataset')
 parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
-parser.add_argument('--epochs', default=120, type=int, metavar='N',
+parser.add_argument('--epochs', default=30, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
 parser.add_argument('-b', '--batch-size', default=64, type=int,
                     metavar='N', help='mini-batch size (default: 256)')
-parser.add_argument('--lr', '--learning-rate', default=0.005, type=float,
+parser.add_argument('--lr', '--learning-rate', default=0.05, type=float,
                     metavar='LR', help='initial learning rate')
 parser.add_argument('--momentum', default=0.95, type=float, metavar='M',
                     help='momentum')
@@ -204,13 +207,13 @@ def main():
 #     semeval_loader = torch.utils.data.DataLoader(
 #         semeval_dataset, batch_size=args.batch_size, shuffle=None,
 #         num_workers=args.workers, pin_memory=True)
-    for lr in [0.000001, 0.00001, 0.0001, 0.001]:
-        for wd in [0.001]:
-            for oc in [128, 256]:
-                for hu in [128, 256]:
-                    for dp in [0.15]:
-                        for hsl in [128, 512]:
-                            for fs in [(1,2,3), (1,3,5)]:
+    for lr in [0.05]:
+        for wd in [0.01]:
+            for oc in [200]:
+                for hu in [100]:
+                    for dp in [0.2]:
+                        for hsl in [128]:
+                            for fs in [(4,6,8)]:
                                 best_prec1 = 0
                                 best_prec1_index = -1
                                 parameters = {"filters": fs,
@@ -224,8 +227,7 @@ def main():
                                               "wd":wd}
 
                                 #device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-                                model = MixtureOfExperts(parameters['filters'], parameters['out_channels'], parameters['max_length'], parameters['hidden_units'], 
-                                                parameters['drop_prob'], 300, parameters['hidden_size_lstm'], 128, train_dataset.pretrained_embs)
+                                model = MixtureOfExperts(parameters['filters'], parameters['out_channels'], parameters['max_length'], parameters['hidden_units'], parameters['drop_prob'], 300, parameters['hidden_size_lstm'], 128, train_dataset.pretrained_embs)
                                 model = torch.nn.DataParallel(model).cuda()
 
                                 # define loss function (criterion) and optimizer
@@ -235,9 +237,9 @@ def main():
                             #     optimizer = torch.optim.SGD(model.parameters(), lr = args.lr,
                             #                                      momentum=args.momentum,
                             #                                      weight_decay=args.weight_decay)
-                                optimizer = torch.optim.Adadelta(model.parameters(), 
+                                optimizer = torch.optim.Adadelta(model.parameters(), lr = lr,
                                                                  rho=args.momentum,
-                                                                 weight_decay=args.weight_decay)
+                                                                 weight_decay=wd)
 
                                 # optionally resume from a checkpoint
                                 train_prec1_plot = []
@@ -274,7 +276,7 @@ def main():
                                     return
 
                                 for epoch in range(args.start_epoch, args.epochs + args.start_epoch):
-                                    adjust_learning_rate(optimizer, epoch)
+                                    adjust_learning_rate(optimizer, epoch, lr)
                                     # train for one epoch
                                     train_prec1, train_loss  = train(train_loader, model, criterion, optimizer, epoch, f)
                                     train_prec1_plot.append(train_prec1)
@@ -442,7 +444,7 @@ def validate(val_loader, model, criterion, f, f1, tag):
     #brk()
     val_stats = '{tag}: Time {time} * Prec@1 {top1.avg:.3f} Loss {loss.avg:.4f}'.format(
         tag=tag,time=time.ctime()[:-8],top1=top1, loss=losses)
-    #print(val_stats)
+    print(val_stats)
     #f.write(val_stats + "\n")
     f.flush()
     return top1.avg, losses.avg
@@ -472,9 +474,9 @@ class AverageMeter(object):
         self.avg = self.sum / self.count
 
 
-def adjust_learning_rate(optimizer, epoch):
+def adjust_learning_rate(optimizer, epoch, lr):
     """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
-    lr = args.lr * (0.8** (epoch // 20))
+    lr = lr * (0.8** (epoch // 5))
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
 

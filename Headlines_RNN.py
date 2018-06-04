@@ -74,9 +74,12 @@ class MixtureOfExperts(nn.Module):
         
         self.mlp = nn.Sequential(
             nn.Linear(out_channels * 3 + hidden_size_lstm * 2, hidden_units),
-            nn.ReLU(), 
+            nn.Tanh(), 
             nn.Dropout(drop_prob), #dropout
-            nn.Linear(hidden_units, num_classes))
+            nn.Linear(hidden_units, 50),
+            nn.Tanh(), 
+            nn.Dropout(drop_prob), #dropout
+            nn.Linear(50, num_classes))
     
     def forward(self, x):
         x = self.embed(x)
@@ -101,9 +104,9 @@ parser.add_argument('--epochs', default=100, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
-parser.add_argument('-b', '--batch-size', default=64, type=int,
-                    metavar='N', help='mini-batch size (default: 256)')
-parser.add_argument('--lr', '--learning-rate', default=0.005, type=float,
+parser.add_argument('-b', '--batch-size', default=32, type=int,
+                    metavar='N', help='mini-batch size (default: 32)')
+parser.add_argument('--lr', '--learning-rate', default=0.05, type=float,
                     metavar='LR', help='initial learning rate')
 parser.add_argument('--momentum', default=0.95, type=float, metavar='M',
                     help='momentum')
@@ -224,7 +227,7 @@ def main():
 #     optimizer = torch.optim.SGD(model.parameters(), lr = args.lr,
 #                                      momentum=args.momentum,
 #                                      weight_decay=args.weight_decay)
-    optimizer = torch.optim.Adadelta(model.parameters(), 
+    optimizer = torch.optim.Adadelta(model.parameters(), lr = args.lr,
                                      rho=args.momentum,
                                      weight_decay=args.weight_decay)
     
@@ -452,7 +455,7 @@ class AverageMeter(object):
 
 def adjust_learning_rate(optimizer, epoch):
     """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
-    lr = args.lr * (0.8** (epoch // 20))
+    lr = args.lr * (0.8** (epoch // 10))
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
 
