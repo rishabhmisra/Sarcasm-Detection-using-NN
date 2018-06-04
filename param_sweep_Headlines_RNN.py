@@ -207,13 +207,14 @@ def main():
 #     semeval_loader = torch.utils.data.DataLoader(
 #         semeval_dataset, batch_size=args.batch_size, shuffle=None,
 #         num_workers=args.workers, pin_memory=True)
-    for lr in [0.05]:
-        for wd in [0.01]:
-            for oc in [200]:
-                for hu in [100]:
-                    for dp in [0.2]:
-                        for hsl in [128]:
-                            for fs in [(4,6,8)]:
+    for lr in [0.05, 0.01]:
+        for wd in [0.01, 0.05]:
+            for oc in [50, 100, 150]:
+                for hu in [64, 192]:
+                    for dp in [0.2, 0.3]:
+                        for hsl in [128, 256]:
+                            for fs in [(1,3,5), (4,6,8)]:
+                                current_lr = lr
                                 best_prec1 = 0
                                 best_prec1_index = -1
                                 parameters = {"filters": fs,
@@ -237,7 +238,7 @@ def main():
                             #     optimizer = torch.optim.SGD(model.parameters(), lr = args.lr,
                             #                                      momentum=args.momentum,
                             #                                      weight_decay=args.weight_decay)
-                                optimizer = torch.optim.Adadelta(model.parameters(), lr = lr,
+                                optimizer = torch.optim.Adadelta(model.parameters(), lr = current_lr,
                                                                  rho=args.momentum,
                                                                  weight_decay=wd)
 
@@ -276,7 +277,7 @@ def main():
                                     return
 
                                 for epoch in range(args.start_epoch, args.epochs + args.start_epoch):
-                                    adjust_learning_rate(optimizer, epoch, lr)
+                                    adjust_learning_rate(optimizer, epoch, current_lr)
                                     # train for one epoch
                                     train_prec1, train_loss  = train(train_loader, model, criterion, optimizer, epoch, f)
                                     train_prec1_plot.append(train_prec1)
