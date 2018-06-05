@@ -100,7 +100,7 @@ parser = argparse.ArgumentParser(description='PyTorch CUE CNN Training')
 #                     help='path to dataset')
 parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
-parser.add_argument('--epochs', default=100, type=int, metavar='N',
+parser.add_argument('--epochs', default=30, type=int, metavar='N',
                     help='number of total epochs to run')
 parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
@@ -208,16 +208,16 @@ def main():
 #         num_workers=args.workers, pin_memory=True)
 
     parameters = {"filters": filter_h,
-                  "out_channels": 200,                  
+                  "out_channels": 100,                  
                   "max_length": train_dataset.max_l + 2  * (max(filter_h) - 1),
-                  "hidden_units": 100,
+                  "hidden_units": 64,
                   "drop_prob": 0.2,
                   "user_size": 400,
                   "epochs":args.epochs}
     
     #device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     model = MixtureOfExperts(parameters['filters'], parameters['out_channels'], parameters['max_length'], parameters['hidden_units'], 
-                    parameters['drop_prob'], 300, 128, 128, train_dataset.pretrained_embs)
+                    parameters['drop_prob'], 300, 256, 128, train_dataset.pretrained_embs)
     model = torch.nn.DataParallel(model).cuda()
 
     # define loss function (criterion) and optimizer
