@@ -19,6 +19,7 @@ import cv2
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 import numpy as np
 from pdb import set_trace as brk
 import time
@@ -81,18 +82,47 @@ class MixtureOfExperts(nn.Module):
             nn.Dropout(drop_prob), #dropout
             nn.Linear(50, num_classes))
     
-    def forward(self, x):
-        x = self.embed(x)
+    def forward(self, y, sents=None, vis_attention=False):
+        x = self.embed(y)
         out1 = self.cue_cnn(x.unsqueeze(1))
         out2 = self.bi_lstm(x.transpose(0,1))[0].transpose(0,1)
         out3 = self.attention_mlp(out2)
-        #brk()
+        
+        if vis_attention:
+            #attention =  nn.Softmax()(out3.view(x.size(0), x.size(1))).data.cpu().numpy()
+            z = out3.view(x.size(0), x.size(1))
+            for i in range(z.size(0)):
+                #brk()
+                w = z[i][7:7+len(sents[i].split())]
+                #brk()
+                att = nn.Softmax()(w * 10000).data.cpu().numpy()
+                self.showAttention(sents[i], ["attention"], att)
+                
+            
         out4 = torch.mul(nn.Softmax()(out3.view(x.size(0), x.size(1))).unsqueeze(2).repeat(1,1,out2.size(2)), out2)
         out5 = torch.sum(out4, dim=1)
         out = torch.cat((out1, out5), dim=1)
         out = self.mlp(out)
         return out
     
+    def showAttention(self, input_sentence, output_words, attentions):
+        # Set up figure with colorbar
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        #brk()
+        cax = ax.matshow(attentions.reshape(1, -1), cmap='bone')
+        fig.colorbar(cax)
+
+        # Set up axes
+        ax.set_xticklabels([''] + input_sentence.split(' '), rotation=90)
+        ax.set_yticklabels([''] + output_words + [''])
+
+        # Show label at every tick
+        ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
+        ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
+
+        plt.savefig('progress/vis_attention__'+ input_sentence +'__.jpg')
+        plt.clf()
 
 #TODO: FIND APPROPRIATE PARAMS
 parser = argparse.ArgumentParser(description='PyTorch CUE CNN Training')
@@ -118,6 +148,8 @@ parser.add_argument('--resume', default='', type=str, metavar='PATH',
                     help='path to latest checkpoint (default: none)')
 parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
                     help='evaluate model on validation set')
+parser.add_argument('-v', '--vis_att', dest='vis_attention', action='store_true',
+                    help='visualize attention on validation set')
 
 best_prec1 = 0
 
@@ -154,44 +186,6 @@ def main():
         pad = max(filter_h) - 1,
         whole_data='DATA/txt/headlines_clean.txt',
     )
-
-    train_loader = torch.utils.data.DataLoader(
-        train_dataset, batch_size=args.batch_size, shuffle=(train_sampler is None),
-        num_workers=args.workers, pin_memory=True)
-
-    val_dataset = HeadlineDataset(
-        csv_file='DATA/txt/headline_val.txt', 
-        #folds_file='DATA/folds/fold_0.csv', 
-        word_embedding_file='DATA/embeddings/headlines_filtered_embs.txt', 
-        #user_embedding_file='DATA/embeddings/usr2vec.txt', 
-        #set_type='val', 
-        pad = max(filter_h) - 1,
-        word_idx = train_dataset.word_idx,
-        pretrained_embs = train_dataset.pretrained_embs,
-        max_l=train_dataset.max_l,
-        #w2v = train_dataset.w2v
-    )
-
-    val_loader = torch.utils.data.DataLoader(
-        val_dataset, batch_size=args.batch_size, shuffle=None,
-        num_workers=args.workers, pin_memory=True)
-    
-    test_dataset = HeadlineDataset(
-        csv_file='DATA/txt/headline_test.txt', 
-        #folds_file='DATA/folds/fold_0.csv', 
-        word_embedding_file='DATA/embeddings/headlines_filtered_embs.txt', 
-        #user_embedding_file='DATA/embeddings/usr2vec.txt', 
-        #set_type='test', 
-        pad = max(filter_h) - 1,
-        word_idx = train_dataset.word_idx,
-        pretrained_embs = train_dataset.pretrained_embs,
-        #w2v = train_dataset.w2v
-        max_l=train_dataset.max_l,
-    )
-
-    test_loader = torch.utils.data.DataLoader(
-        test_dataset, batch_size=args.batch_size, shuffle=None,
-        num_workers=args.workers, pin_memory=True)
 
     
 #     semeval_dataset = SemEvalDataset(
@@ -240,13 +234,13 @@ def main():
     test_loss_plot = []
 #     semeval_prec1_plot = []
 #     semeval_loss_plot = []
+
     if args.resume:
         if os.path.isfile(args.resume):
             print("=> loading checkpoint '{}'".format(args.resume))
             checkpoint = torch.load(args.resume)
             args.start_epoch = checkpoint['epoch']
             best_prec1 = checkpoint['best_prec1']
-            model.load_state_dict(checkpoint['state_dict'])
             optimizer.load_state_dict(checkpoint['optimizer'])
             train_prec1_plot = train_prec1_plot + checkpoint['train_prec1_plot']
             train_loss_plot = train_loss_plot + checkpoint['train_loss_plot']
@@ -254,17 +248,62 @@ def main():
             val_loss_plot = val_loss_plot + checkpoint['val_loss_plot']
             test_prec1_plot = test_prec1_plot + checkpoint['test_prec1_plot']
             test_loss_plot = test_loss_plot + checkpoint['test_loss_plot']
-#             semeval_prec1_plot = semeval_prec1_plot + checkpoint['semeval_prec1_plot']
-#             semeval_loss_plot = semeval_loss_plot + checkpoint['semeval_loss_plot']
+            model.load_state_dict(checkpoint['state_dict'])
+            word_idx = checkpoint['word_idx']
+            train_dataset.word_idx = word_idx
+    #             semeval_prec1_plot = semeval_prec1_plot + checkpoint['semeval_prec1_plot']
+    #             semeval_loss_plot = semeval_loss_plot + checkpoint['semeval_loss_plot']
+    #            model.module.embed.weight.data.copy_(torch.from_numpy(word_embeddings))
             print("=> loaded checkpoint '{}' (epoch {})"
                   .format(args.resume, checkpoint['epoch']))
         else:
             print("=> no checkpoint found at '{}'".format(args.resume))
+    train_loader = torch.utils.data.DataLoader(
+        train_dataset, batch_size=args.batch_size, shuffle=(train_sampler is None),
+        num_workers=args.workers, pin_memory=True)
 
-    if args.evaluate:
-        validate(semeval_loader, model, criterion, f, f1, tag='semeval')
+    val_dataset = HeadlineDataset(
+        csv_file='DATA/txt/headline_val.txt', 
+        #folds_file='DATA/folds/fold_0.csv', 
+        word_embedding_file='DATA/embeddings/headlines_filtered_embs.txt', 
+        #user_embedding_file='DATA/embeddings/usr2vec.txt', 
+        #set_type='val', 
+        pad = max(filter_h) - 1,
+        word_idx = train_dataset.word_idx,
+        pretrained_embs = train_dataset.pretrained_embs,
+        max_l=train_dataset.max_l,
+        #w2v = train_dataset.w2v
+    )
+
+    val_loader = torch.utils.data.DataLoader(
+        val_dataset, batch_size=args.batch_size, shuffle=None,
+        num_workers=args.workers, pin_memory=True)
+    
+    test_dataset = HeadlineDataset(
+        csv_file='DATA/txt/attention.txt', 
+        #folds_file='DATA/folds/fold_0.csv', 
+        word_embedding_file='DATA/embeddings/headlines_filtered_embs.txt', 
+        #user_embedding_file='DATA/embeddings/usr2vec.txt', 
+        #set_type='test', 
+        pad = max(filter_h) - 1,
+        word_idx = train_dataset.word_idx,
+        pretrained_embs = train_dataset.pretrained_embs,
+        #w2v = train_dataset.w2v
+        max_l=train_dataset.max_l,
+    )
+
+    test_loader = torch.utils.data.DataLoader(
+        test_dataset, batch_size=args.batch_size, shuffle=None,
+        num_workers=args.workers, pin_memory=True)
+
+    if args.evaluate and args.vis_attention:
+        validate(test_loader, model, criterion, f, f1, tag='test', vis_attention=True)
         return
-
+    
+    if args.evaluate:
+        validate(test_loader, model, criterion, f, f1, tag='test')
+        return
+    
     for epoch in range(args.start_epoch, args.epochs + args.start_epoch):
         adjust_learning_rate(optimizer, epoch)
         # train for one epoch
@@ -303,6 +342,7 @@ def main():
             'state_dict': model.state_dict(),
             'best_prec1': best_prec1,
             'optimizer' : optimizer.state_dict(),
+            'word_idx' : train_dataset.word_idx,
         }, is_best)
         
         #plot data
@@ -368,7 +408,7 @@ def train(train_loader, model, criterion, optimizer, epoch, f):
     return top1.avg, losses.avg
 
 
-def validate(val_loader, model, criterion, f, f1, tag):
+def validate(val_loader, model, criterion, f, f1, tag, vis_attention=False):
     batch_time = AverageMeter()
     losses = AverageMeter()
     top1 = AverageMeter()
@@ -379,7 +419,7 @@ def validate(val_loader, model, criterion, f, f1, tag):
     end = time.time()
     for i, data_points in enumerate(val_loader):
         if tag != 'semeval':
-            input, target, sent = data_points
+            input, target, sents = data_points
         else:
             input, user_embeddings, target, sents = data_points
         target = target.cuda(async=True)
@@ -391,7 +431,7 @@ def validate(val_loader, model, criterion, f, f1, tag):
         #pdb.set_trace()
         #print(sent)
         # compute output
-        output = model(input)
+        output = model(input, sents, vis_attention)
         loss = criterion(output, target)
 
         # measure accuracy and record loss
@@ -411,11 +451,12 @@ def validate(val_loader, model, criterion, f, f1, tag):
 #                i, len(val_loader), batch_time=batch_time, loss=losses,
 #                top1=top1))
         
-        if tag == 'semeval' and args.evaluate:
+        if tag == 'test' and args.evaluate:
             _, pred = output.topk(1, 1, True, True)
             pred = pred.t()
+            confidences = nn.Softmax()(output)
             for x in range(target.size(0)):
-                progress_stats = '{label} | {pred} | {sent} \n'.format(label=target[x].data[0],pred=pred[0][x].data[0],
+                progress_stats = '{label} | {pred} |{confidence} | {sent} \n'.format(label=target[x].data[0],pred=pred[0][x].data[0],confidence=max(confidences[x]).data[0],
                    sent=sents[x])
                 #print(progress_stats)
                 f1.write(progress_stats)
@@ -427,7 +468,6 @@ def validate(val_loader, model, criterion, f, f1, tag):
     f.write(val_stats + "\n")
     f.flush()
     return top1.avg, losses.avg
-
 
 def save_checkpoint(state, is_best, filename='checkpoint.pth.tar'):
     torch.save(state, filename)
