@@ -20,22 +20,20 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
+import matplotlib
 import numpy as np
 from pdb import set_trace as brk
 import time
 
 from pdb import set_trace as brk
-
-# from SemEval_data_set import SemEvalDataset
 from headline_data_set import HeadlineDataset
 
-# Convolutional neural network (two convolutional layers) #TODO filter_d
+# Convolutional neural network (two convolutional layers)
 class ConvNet(nn.Module):
     def __init__(self, filter_h, out_channels, max_length, filter_d=300, in_channels=1):
         super(ConvNet, self).__init__()
         self.layer1 = nn.Sequential(
-            nn.Conv2d(in_channels, out_channels, kernel_size=(filter_h, filter_d)), # check padding in originalcode
-            #nn.BatchNorm2d(128),
+            nn.Conv2d(in_channels, out_channels, kernel_size=(filter_h, filter_d)),
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=(max_length,1)))
         
@@ -67,10 +65,6 @@ class MixtureOfExperts(nn.Module):
         self.cue_cnn = CUE_CNN(filters, out_channels, max_length, hidden_units, drop_prob, num_classes)
         self.bi_lstm = nn.LSTM(lstm_input_size, hidden_size_lstm, num_layers=1, bidirectional=True)
         
-#         self.attention_mlp = nn.Sequential(
-#             nn.Linear(hidden_size_lstm * 2, hidden_units_attention),
-#             nn.ReLU(),
-#             nn.Linear(hidden_units_attention, 1))
         self.attention_mlp = nn.Linear(hidden_size_lstm * 2, 1)
         
         self.mlp = nn.Sequential(
@@ -87,18 +81,13 @@ class MixtureOfExperts(nn.Module):
         out1 = self.cue_cnn(x.unsqueeze(1))
         out2 = self.bi_lstm(x.transpose(0,1))[0].transpose(0,1)
         out3 = self.attention_mlp(out2)
-        
         if vis_attention:
-            #attention =  nn.Softmax()(out3.view(x.size(0), x.size(1))).data.cpu().numpy()
             z = out3.view(x.size(0), x.size(1))
             for i in range(z.size(0)):
-                #brk()
                 w = z[i][7:7+len(sents[i].split())]
-                #brk()
                 att = nn.Softmax()(w * 10000).data.cpu().numpy()
                 self.showAttention(sents[i], ["attention"], att)
-                
-            
+
         out4 = torch.mul(nn.Softmax()(out3.view(x.size(0), x.size(1))).unsqueeze(2).repeat(1,1,out2.size(2)), out2)
         out5 = torch.sum(out4, dim=1)
         out = torch.cat((out1, out5), dim=1)
@@ -109,7 +98,6 @@ class MixtureOfExperts(nn.Module):
         # Set up figure with colorbar
         fig = plt.figure()
         ax = fig.add_subplot(111)
-        #brk()
         cax = ax.matshow(attentions.reshape(1, -1), cmap='bone')
         fig.colorbar(cax)
 
@@ -124,10 +112,7 @@ class MixtureOfExperts(nn.Module):
         plt.savefig('progress/vis_attention__'+ input_sentence +'__.jpg')
         plt.clf()
 
-#TODO: FIND APPROPRIATE PARAMS
 parser = argparse.ArgumentParser(description='PyTorch CUE CNN Training')
-# parser.add_argument('data', metavar='DIR',
-#                     help='path to dataset')
 parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
 parser.add_argument('--epochs', default=30, type=int, metavar='N',
@@ -153,11 +138,13 @@ parser.add_argument('-v', '--vis_att', dest='vis_attention', action='store_true'
 
 best_prec1 = 0
 
-def plot_stats(epoch, data_1, data_2, data_3, label_1, label_2, label_3, plt):
+def plot_stats(epoch, data_1, data_2, data_3, label_1, label_2, label_3, plt, ylabel):
     plt.plot(range(epoch), data_1, 'r--', label=label_1)
     plt.plot(range(epoch), data_2, 'g--', label=label_2)
     plt.plot(range(epoch), data_3, 'b--', label=label_3)
-    #plt.plot(range(epoch), data_4, 'y--', label=label_4)
+    plt.xlabel('Epochs')
+    plt.ylabel(ylabel)
+    plt.tight_layout()
     plt.legend()
 
 
@@ -174,32 +161,46 @@ def main():
     args = parser.parse_args()
 
     ## READ DATA
-    filter_h = [4,6,8] #[1, 3, 5]
+    filter_h = [4,6,8]
     
     train_sampler = None 
     train_dataset = HeadlineDataset(
         csv_file='DATA/txt/headline_train.txt', 
-        #folds_file='DATA/folds/fold_0.csv', 
         word_embedding_file='DATA/embeddings/headlines_filtered_embs.txt', 
-        #user_embedding_file='DATA/embeddings/usr2vec.txt', 
-        #set_type='train', 
         pad = max(filter_h) - 1,
         whole_data='DATA/txt/headlines_clean.txt',
     )
 
+    train_loader = torch.utils.data.DataLoader(
+        train_dataset, batch_size=args.batch_size, shuffle=(train_sampler is None),
+        num_workers=args.workers, pin_memory=True)
     
-#     semeval_dataset = SemEvalDataset(
-#         csv_file='DATA/txt/SemEval_clean.txt', 
-#         word_embedding_file='DATA/embeddings/SemEval_filtered_embs.txt',  
-#         pad = max(filter_h) - 1,
-#         max_l = train_dataset.max_l,
-#         #word_idx = train_dataset.word_idx,
-#         #pretrained_embs = train_dataset.pretrained_embs,
-#     )
 
-#     semeval_loader = torch.utils.data.DataLoader(
-#         semeval_dataset, batch_size=args.batch_size, shuffle=None,
-#         num_workers=args.workers, pin_memory=True)
+    val_dataset = HeadlineDataset(
+        csv_file='DATA/txt/headline_val.txt', 
+        word_embedding_file='DATA/embeddings/headlines_filtered_embs.txt', 
+        pad = max(filter_h) - 1,
+        word_idx = train_dataset.word_idx,
+        pretrained_embs = train_dataset.pretrained_embs,
+        max_l=train_dataset.max_l,
+    )
+
+    val_loader = torch.utils.data.DataLoader(
+        val_dataset, batch_size=args.batch_size, shuffle=None,
+        num_workers=args.workers, pin_memory=True)
+    
+    test_dataset = HeadlineDataset(
+        csv_file='DATA/txt/headline_test.txt', 
+        word_embedding_file='DATA/embeddings/headlines_filtered_embs.txt', 
+        pad = max(filter_h) - 1,
+        word_idx = train_dataset.word_idx,
+        pretrained_embs = train_dataset.pretrained_embs,
+        max_l=train_dataset.max_l,
+    )
+
+    test_loader = torch.utils.data.DataLoader(
+        test_dataset, batch_size=args.batch_size, shuffle=None,
+        num_workers=args.workers, pin_memory=True)
 
     parameters = {"filters": filter_h,
                   "out_channels": 100,                  
@@ -217,10 +218,6 @@ def main():
     # define loss function (criterion) and optimizer
     criterion = nn.CrossEntropyLoss().cuda()
 
-#     optimizer = torch.optim.Adam(model.parameters(), lr = args.lr)
-#     optimizer = torch.optim.SGD(model.parameters(), lr = args.lr,
-#                                      momentum=args.momentum,
-#                                      weight_decay=args.weight_decay)
     optimizer = torch.optim.Adadelta(model.parameters(), lr = args.lr,
                                      rho=args.momentum,
                                      weight_decay=args.weight_decay)
@@ -232,8 +229,6 @@ def main():
     val_loss_plot = []
     test_prec1_plot = []
     test_loss_plot = []
-#     semeval_prec1_plot = []
-#     semeval_loss_plot = []
 
     if args.resume:
         if os.path.isfile(args.resume):
@@ -251,9 +246,6 @@ def main():
             model.load_state_dict(checkpoint['state_dict'])
             word_idx = checkpoint['word_idx']
             train_dataset.word_idx = word_idx
-    #             semeval_prec1_plot = semeval_prec1_plot + checkpoint['semeval_prec1_plot']
-    #             semeval_loss_plot = semeval_loss_plot + checkpoint['semeval_loss_plot']
-    #            model.module.embed.weight.data.copy_(torch.from_numpy(word_embeddings))
             print("=> loaded checkpoint '{}' (epoch {})"
                   .format(args.resume, checkpoint['epoch']))
         else:
@@ -264,15 +256,11 @@ def main():
 
     val_dataset = HeadlineDataset(
         csv_file='DATA/txt/headline_val.txt', 
-        #folds_file='DATA/folds/fold_0.csv', 
         word_embedding_file='DATA/embeddings/headlines_filtered_embs.txt', 
-        #user_embedding_file='DATA/embeddings/usr2vec.txt', 
-        #set_type='val', 
         pad = max(filter_h) - 1,
         word_idx = train_dataset.word_idx,
         pretrained_embs = train_dataset.pretrained_embs,
         max_l=train_dataset.max_l,
-        #w2v = train_dataset.w2v
     )
 
     val_loader = torch.utils.data.DataLoader(
@@ -280,15 +268,11 @@ def main():
         num_workers=args.workers, pin_memory=True)
     
     test_dataset = HeadlineDataset(
-        csv_file='DATA/txt/attention.txt', 
-        #folds_file='DATA/folds/fold_0.csv', 
+        csv_file='DATA/txt/headline_test.txt', 
         word_embedding_file='DATA/embeddings/headlines_filtered_embs.txt', 
-        #user_embedding_file='DATA/embeddings/usr2vec.txt', 
-        #set_type='test', 
         pad = max(filter_h) - 1,
         word_idx = train_dataset.word_idx,
         pretrained_embs = train_dataset.pretrained_embs,
-        #w2v = train_dataset.w2v
         max_l=train_dataset.max_l,
     )
 
@@ -321,10 +305,6 @@ def main():
         test_prec1_plot.append(test_prec1)
         test_loss_plot.append(test_loss)
         
-        # evaluate on semeval set
-#         semeval_prec1,semeval_loss = validate(semeval_loader, model, criterion, f, f1, tag='semeval')
-#         semeval_prec1_plot.append(semeval_prec1)
-#         semeval_loss_plot.append(semeval_loss)
         f1.close()
         # remember best prec@1 and save checkpoint
         is_best = val_prec1 > best_prec1
@@ -336,8 +316,6 @@ def main():
             'val_loss_plot':val_loss_plot,
             'test_prec1_plot':test_prec1_plot,
             'test_loss_plot':test_loss_plot,
-#             'semeval_prec1_plot':test_prec1_plot,
-#             'semeval_loss_plot':test_loss_plot,
             'epoch': epoch + 1,
             'state_dict': model.state_dict(),
             'best_prec1': best_prec1,
@@ -346,15 +324,16 @@ def main():
         }, is_best)
         
         #plot data
+        font = {'size' : 18}
+        matplotlib.rc('font', **font)
         plt.figure(figsize=(12,12))
         plt.subplot(2,1,1)
-        plot_stats(epoch+1, train_loss_plot, val_loss_plot, test_loss_plot, 'train_loss', 'val_loss', 'test_loss', plt)
+        plot_stats(epoch+1, train_loss_plot, val_loss_plot, test_loss_plot, 'train_loss', 'val_loss', 'test_loss', plt, 'Loss')
         plt.subplot(2,1,2)
-        plot_stats(epoch+1, train_prec1_plot, val_prec1_plot, test_prec1_plot, 'train_acc', 'val_acc', 'test_acc', plt)
+        plot_stats(epoch+1, train_prec1_plot, val_prec1_plot, test_prec1_plot, 'train_acc', 'val_acc', 'test_acc', plt, 'Accuracy')
         plt.savefig('progress/' + run_time + '/stats.jpg')
         plt.clf()
     f.close()
-    #f1.close()
 
 def train(train_loader, model, criterion, optimizer, epoch, f):
     batch_time = AverageMeter()
@@ -373,8 +352,6 @@ def train(train_loader, model, criterion, optimizer, epoch, f):
         target = target.cuda(async=True)
         input = input.cuda(async=True)
         input = torch.autograd.Variable(input).type(torch.LongTensor)
-        #user_embeddings = torch.zeros(input.size(0), 400)
-        #user_embeddings = torch.autograd.Variable(user_embeddings).type(torch.FloatTensor)
         target = torch.autograd.Variable(target)
 
         # compute output
@@ -425,11 +402,8 @@ def validate(val_loader, model, criterion, f, f1, tag, vis_attention=False):
         target = target.cuda(async=True)
         input = input.cuda(async=True)
         input = torch.autograd.Variable(input, volatile=True).type(torch.LongTensor)
-#         user_embeddings = torch.zeros(input.size(0), 400)
-#         user_embeddings = torch.autograd.Variable(user_embeddings, volatile=True).type(torch.FloatTensor)
         target = torch.autograd.Variable(target, volatile=True)
-        #pdb.set_trace()
-        #print(sent)
+    
         # compute output
         output = model(input, sents, vis_attention)
         loss = criterion(output, target)
@@ -443,14 +417,6 @@ def validate(val_loader, model, criterion, f, f1, tag, vis_attention=False):
         batch_time.update(time.time() - end)
         end = time.time()
         
-        #if i % args.print_freq == 0:
-#         print('Test: [{0}/{1}]\t'
-#               'Time {batch_time.val:.3f} ({batch_time.avg:.3f})\t'
-#               'Loss {loss.val:.4f} ({loss.avg:.4f})\t'
-#               'Prec@1 {top1.val:.3f} ({top1.avg:.3f})\t'.format(
-#                i, len(val_loader), batch_time=batch_time, loss=losses,
-#                top1=top1))
-        
         if tag == 'test' and args.evaluate:
             _, pred = output.topk(1, 1, True, True)
             pred = pred.t()
@@ -458,10 +424,9 @@ def validate(val_loader, model, criterion, f, f1, tag, vis_attention=False):
             for x in range(target.size(0)):
                 progress_stats = '{label} | {pred} |{confidence} | {sent} \n'.format(label=target[x].data[0],pred=pred[0][x].data[0],confidence=max(confidences[x]).data[0],
                    sent=sents[x])
-                #print(progress_stats)
                 f1.write(progress_stats)
             f1.flush()
-    #brk()
+
     val_stats = '{tag}: Time {time} * Prec@1 {top1.avg:.3f} Loss {loss.avg:.4f}'.format(
         tag=tag,time=time.ctime()[:-8],top1=top1, loss=losses)
     print(val_stats)
@@ -508,7 +473,6 @@ def accuracy(output, target, topk=(1,)):
     _, pred = output.topk(maxk, 1, True, True)
     pred = pred.t()
     correct = pred.eq(target.view(1, -1).expand_as(pred))
-    #print('Correct', correct.size(), target.size(), target.view(1, -1).size(), pred.size())
     res = []
     for k in topk:
         correct_k = correct[:k].view(-1).float().sum(0, keepdim=True)
