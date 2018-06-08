@@ -23,7 +23,10 @@ for Sarcasm Detection in Social Media' (https://arxiv.org/pdf/1607.00976.pdf). T
 3. Execute iPython notebook ```get_data.ipynb```. This utility code is used to download tweets corresponding to the tweet ids and then preprocess these tweet messages.
 
 ### 2. Training and Evaluation
+#### a. To run the original code
 Run ```python train_CUE_CNN.py```
+#### b. To run the RNN + CNN Hybrid model on the new Dataset
+Run ```python Headlines_RNN.py```
 
 ## Output, results and visualization 
 The code generate a ```progress``` folder, that contains sub folder for every run. Inside every run folder following two file are generated - 
