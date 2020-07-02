@@ -36,4 +36,4 @@ The code generate a ```progress``` folder, that contains sub folder for every ru
    - train/test/validation accuracy on a single plot
    
 ## Note:
-Util files, pre-trained user embeddings and raw tweet ids were obtained from [Original CUE-CNN] (https://github.com/samiroid/CUE-CNN)
+Util files, pre-trained user embeddings and raw tweet ids were obtained from [Original CUE-CNN](https://github.com/samiroid/CUE-CNN)
