@@ -1,7 +1,7 @@
 # Sarcasm-Detection-using-HNN
 
 This is the PyTorch implementation of work presented in 'Modelling Context with User Embeddings
-for Sarcasm Detection in Social Media' (https://arxiv.org/pdf/1607.00976.pdf). The neural network takes a tweet (content) and corresponding user embedding (context) as input, and classifies the tweets as sarcastic/non-sarcastic.
+for Sarcasm Detection in Social Media' (https://arxiv.org/pdf/1607.00976.pdf). The neural network takes a tweet (content) and corresponding user embedding (context) as input, and classifies the tweets as sarcastic/non-sarcastic. We further provide an implementation of our improved framework proposed in Sarcasm Detection using Hybrid Neural Network. (https://arxiv.org/abs/1908.07414).
 
 ## System requirments
 - python 2.7
