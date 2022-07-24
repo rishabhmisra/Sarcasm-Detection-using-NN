@@ -1,4 +1,4 @@
-# Sarcasm-Detection-using-CNN
+# Sarcasm-Detection-using-HNN
 
 This is the PyTorch implementation of work presented in 'Modelling Context with User Embeddings
 for Sarcasm Detection in Social Media' (https://arxiv.org/pdf/1607.00976.pdf). The neural network takes a tweet (content) and corresponding user embedding (context) as input, and classifies the tweets as sarcastic/non-sarcastic.
@@ -37,3 +37,24 @@ The code generate a ```progress``` folder, that contains sub folder for every ru
    
 ## Note:
 Util files, pre-trained user embeddings and raw tweet ids were obtained from [Original CUE-CNN](https://github.com/samiroid/CUE-CNN)
+
+## Cite
+Please cite the following if you use the dataset:
+```
+@article{misra2019sarcasm,
+  title={Sarcasm Detection using Hybrid Neural Network},
+  author={Misra, Rishabh and Arora, Prahal},
+  journal={arXiv preprint arXiv:1908.07414},
+  year={2019}
+}
+
+@book{book,
+author = {Misra, Rishabh and Grover, Jigyasa},
+year = {2021},
+month = {01},
+pages = {},
+title = {Sculpting Data for ML: The first act of Machine Learning},
+isbn = {978-0-578-83125-1}
+}
+```
+
