@@ -48,7 +48,7 @@ Please cite the following if you use the dataset:
   year={2019}
 }
 
-@book{book,
+@book{misra2021sculpting,
 author = {Misra, Rishabh and Grover, Jigyasa},
 year = {2021},
 month = {01},
