@@ -39,7 +39,14 @@ The code generate a ```progress``` folder, that contains sub folder for every ru
 Util files, pre-trained user embeddings and raw tweet ids were obtained from [Original CUE-CNN](https://github.com/samiroid/CUE-CNN)
 
 ## Cite
-Please cite the following if you use the dataset:
+Please cite the following articles in suitable format if you use the dataset:
+
+**Text Format**:
+```
+1. Misra, Rishabh and Prahal Arora. "Sarcasm Detection using Hybrid Neural Network." arXiv preprint arXiv:1908.07414 (2019).
+2. Misra, Rishabh and Jigyasa Grover. "Sculpting Data for ML: The first act of Machine Learning." ISBN 978-0-578-83125-1 (2021).
+```
+**BibTex Format**:
 ```
 @article{misra2019sarcasm,
   title={Sarcasm Detection using Hybrid Neural Network},
