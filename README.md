@@ -18,7 +18,7 @@ for Sarcasm Detection in Social Media' (https://arxiv.org/pdf/1607.00976.pdf). T
    - Unzip the .bin.gz fine and run the iPython notebook ```get_word2vec_embeddings.ipynb```
    - Place the .txt file obtained in ```DATA/embeddings/``` and change its name to ```words.txt```
 
-2.  Get pre-trained user embeddings for the user. The embeddings we used can be found [here](https://www.dropbox.com/s/pmp5x08v6w09jrq/usr2vec_400_master.txt?dl=0). Place the embeddings in ```DATA/embeddings``` and name the file as ```usr2vec.txt```
+2.  Get pre-trained user embeddings for the user. The embeddings we used can be found [here](https://www.dropbox.com/scl/fi/tzu4yos5v0lrp1hs5nugc/usr2vec_400_master.txt?rlkey=n433fy4uxj3a14ha9oqchf8nk&e=1&dl=0). Place the embeddings in ```DATA/embeddings``` and name the file as ```usr2vec.txt```. Source: https://github.com/samiroid/CUE-CNN?tab=readme-ov-file
 
 3. Execute iPython notebook ```get_data.ipynb```. This utility code is used to download tweets corresponding to the tweet ids and then preprocess these tweet messages.
 
